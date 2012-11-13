@@ -21,7 +21,7 @@ Ember.Evented = Ember.Mixin.create({
 
     var self = this;
     var wrapped = function() {
-      Ember.removeListener(self, name, target, method);
+      Ember.removeListener(self, name, target, wrapped);
 
       if ('string' === typeof method) { method = this[method]; }
 
@@ -32,7 +32,7 @@ Ember.Evented = Ember.Mixin.create({
       method.apply(this, arguments);
     };
 
-    Ember.addListener(this, name, target, wrapped, Ember.guidFor(method));
+    Ember.addListener(this, name, target, wrapped);
   },
 
   trigger: function(name) {
