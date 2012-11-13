@@ -41,6 +41,30 @@ function actionSetFor(obj, eventName, target, writable) {
   return metaPath(obj, ['listeners', eventName, guidFor(target)], writable);
 }
 
+function actionsFor(obj, eventName, target, writable) {
+  var meta = Ember.meta(obj, writable);
+  meta.listeners = meta.listeners || {};
+  var actions = meta.listeners[eventName] = meta.listeners[eventName] || {__ember_source__: obj};
+  if (actions && actions.__ember_source__ !== obj) {
+    meta.listeners = o_create(meta.listeners);
+    meta.listeners.__ember_source__ = obj;
+
+    var methodsCopy = [];
+    for (var i = 0, l = actions.methods.length; i < l; i++) {
+      methodsCopy.push(actions.methods[i].slice());
+    }
+
+    actions = meta.listeners[eventName] = {
+      targets: actions.targets.slice(),
+      methods: methodsCopy
+    };
+  } else {
+    actions.targets = actions.targets || [];
+    actions.methods = actions.methods || [];
+  }
+  return actions;
+}
+
 // Gets the set of all targets, keyed on the guid of each action's
 // target property.
 function targetSetFor(obj, eventName) {
@@ -54,27 +78,21 @@ function targetSetFor(obj, eventName) {
 // meta system.
 var SKIP_PROPERTIES = { __ember_source__: true };
 
-function iterateSet(targetSet, callback) {
-  if (!targetSet) { return false; }
-  // Iterate through all elements of the target set
-  for(var targetGuid in targetSet) {
-    if (SKIP_PROPERTIES[targetGuid]) { continue; }
+function iterateSet(actions, callback) {
+  if (!actions) { return false; }
 
-    var actionSet = targetSet[targetGuid];
-    if (actionSet) {
-      // Iterate through the elements of the action set
-      for(var methodGuid in actionSet) {
-        if (SKIP_PROPERTIES[methodGuid]) { continue; }
+  for (var i = 0, l = actions.targets.length; i < l; i++) {
+    var target = actions.targets[i],
+        methods = actions.methods[i];
 
-        var action = actionSet[methodGuid];
-        if (action) {
-          if (callback(action) === true) {
-            return true;
-          }
-        }
+    // loop backwards because of removeListener
+    for (var j = methods.length - 1; j >= 0; j--) {
+      if (callback({target: target, method: methods[j]}) === true) {
+        return true;
       }
     }
   }
+
   return false;
 }
 
@@ -135,13 +153,18 @@ function addListener(obj, eventName, target, method, guid) {
     target = null;
   }
 
-  var actionSet = actionSetFor(obj, eventName, target, true),
-      // guid is used in case we wrapp given method to register
-      // listener with method guid instead of the wrapper guid
-      methodGuid = guid || guidFor(method);
+  var actions = actionsFor(obj, eventName, target, true),
+      targetIndex = actions.targets.indexOf(target);
+  if (targetIndex !== -1) {
+    var targetMethods = actions.methods[targetIndex] = actions.methods[targetIndex] || [],
+        targetMethodIndex = targetMethods.indexOf(method);
 
-  if (!actionSet[methodGuid]) {
-    actionSet[methodGuid] = { target: target, method: method };
+    if (targetMethodIndex === -1) {
+      targetMethods.push(method);
+    }
+  } else {
+    actions.targets.push(target);
+    actions.methods.push([method]);
   }
 
   if ('function' === typeof obj.didAddListener) {
@@ -170,12 +193,12 @@ function removeListener(obj, eventName, target, method) {
   }
 
   function _removeListener(target, method) {
-    var actionSet = actionSetFor(obj, eventName, target, true),
-        methodGuid = guidFor(method);
+    var actions = actionsFor(obj, eventName, target, true),
+        targetIndex = actions.targets.indexOf(target),
+        targetMethods = actions.methods[targetIndex] || [];
 
-    // we can't simply delete this parameter, because if we do, we might
-    // re-expose the property from the prototype chain.
-    if (actionSet && actionSet[methodGuid]) { actionSet[methodGuid] = null; }
+    var targetMethodIndex = targetMethods.indexOf(method);
+    if (targetMethodIndex !== -1) { targetMethods.splice(targetMethodIndex, 1); }
 
     if ('function' === typeof obj.didRemoveListener) {
       obj.didRemoveListener(eventName, target, method);
@@ -215,15 +238,20 @@ function suspendListener(obj, eventName, target, method, callback) {
     target = null;
   }
 
-  var actionSet = actionSetFor(obj, eventName, target, true),
-      methodGuid = guidFor(method),
-      action = actionSet && actionSet[methodGuid];
+  var actions = actionsFor(obj, eventName, target, true),
+      targetIndex = actions.targets.indexOf(target),
+      targetMethods = actions.methods[targetIndex],
+      targetMethodIndex = targetMethods.indexOf(method),
+      action;
 
-  actionSet[methodGuid] = null;
+  if (targetMethodIndex !== -1) {
+    action = targetMethods.splice(targetMethodIndex, 1)[0];
+  }
+
   try {
     return callback.call(target);
   } finally {
-    actionSet[methodGuid] = action;
+    if (action) { targetMethods.push(action); }
   }
 }
 
@@ -251,27 +279,28 @@ function suspendListeners(obj, eventNames, target, method, callback) {
     target = null;
   }
 
-  var oldActions = [],
-      actionSets = [],
-      eventName, actionSet, methodGuid, action, i, l;
+  var removedMethods = [],
+      targetMethodArrays = [],
+      eventName, actions, action, i, l;
 
   for (i=0, l=eventNames.length; i<l; i++) {
     eventName = eventNames[i];
-    actionSet = actionSetFor(obj, eventName, target, true),
-    methodGuid = guidFor(method);
+    actions = actionsFor(obj, eventName, target, true);
+    var targetIndex = actions.targets.indexOf(target),
+        targetMethods = actions.methods[targetIndex],
+        targetMethodIndex = actions.methods[targetIndex].indexOf(method);
 
-    oldActions.push(actionSet && actionSet[methodGuid]);
-    actionSets.push(actionSet);
-
-    actionSet[methodGuid] = null;
+    if (targetMethodIndex !== -1) {
+      removedMethods.push(targetMethods.splice(targetMethodIndex, 1));
+    }
+    targetMethodArrays.push(targetMethods);
   }
 
   try {
     return callback.call(target);
   } finally {
-    for (i=0, l=oldActions.length; i<l; i++) {
-      eventName = eventNames[i];
-      actionSets[i][methodGuid] = oldActions[i];
+    for (i=0, l=removedMethods.length; i<l; i++) {
+      targetMethodArrays[i].push(removedMethods[i]);
     }
   }
 }
