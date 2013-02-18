@@ -1,4 +1,8 @@
-require("rsvp");
+var RSVP = requireModule("rsvp");
+
+RSVP.async = function(callback, binding) {
+  Ember.run.schedule('actions', binding, callback);
+};
 
 /**
 @module ember
@@ -13,8 +17,7 @@ var get = Ember.get,
   @namespace Ember
   @extends Ember.Mixin
  */
-Ember.Deferred = Ember.Mixin.create({
-
+Ember.DeferredMixin = Ember.Mixin.create({
   /**
     Add handlers to be called when the Deferred object is resolved or rejected.
 
@@ -23,11 +26,12 @@ Ember.Deferred = Ember.Mixin.create({
     @param {Function} failCallback a callback function to be called when failed
   */
   then: function(doneCallback, failCallback) {
-    return get(this, 'promise').then(doneCallback, failCallback);
+    var promise = get(this, 'promise');
+    return promise.then.apply(promise, arguments);
   },
 
   /**
-    Resolve a Deferred object and call any doneCallbacks with the given args.
+    Resolve a Deferred object and call any `doneCallbacks` with the given args.
 
     @method resolve
   */
@@ -36,7 +40,7 @@ Ember.Deferred = Ember.Mixin.create({
   },
 
   /**
-    Reject a Deferred object and call any failCallbacks with the given args.
+    Reject a Deferred object and call any `failCallbacks` with the given args.
 
     @method reject
   */
@@ -48,3 +52,4 @@ Ember.Deferred = Ember.Mixin.create({
     return new RSVP.Promise();
   })
 });
+

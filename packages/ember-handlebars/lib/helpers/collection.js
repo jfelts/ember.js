@@ -13,29 +13,28 @@ var get = Ember.get, handlebarsGet = Ember.Handlebars.get, fmt = Ember.String.fm
 
 /**
   `{{collection}}` is a `Ember.Handlebars` helper for adding instances of
-  `Ember.CollectionView` to a template.  See `Ember.CollectionView` for additional
-  information on how a `CollectionView` functions.
+  `Ember.CollectionView` to a template. See `Ember.CollectionView` for
+  additional information on how a `CollectionView` functions.
 
-  `{{collection}}`'s primary use is as a block helper with a `contentBinding` option
-  pointing towards an `Ember.Array`-compatible object.  An `Ember.View` instance will
-  be created for each item in its `content` property. Each view will have its own
-  `content` property set to the appropriate item in the collection.
+  `{{collection}}`'s primary use is as a block helper with a `contentBinding`
+  option pointing towards an `Ember.Array`-compatible object. An `Ember.View`
+  instance will be created for each item in its `content` property. Each view
+  will have its own `content` property set to the appropriate item in the
+  collection.
 
   The provided block will be applied as the template for each item's view.
 
   Given an empty `<body>` the following template:
 
-  ``` handlebars
-  <script type="text/x-handlebars">
-    {{#collection contentBinding="App.items"}}
-      Hi {{view.content.name}}
-    {{/collection}}
-  </script>
+  ```handlebars
+  {{#collection contentBinding="App.items"}}
+    Hi {{view.content.name}}
+  {{/collection}}
   ```
 
   And the following application code
 
-  ``` javascript
+  ```javascript
   App = Ember.Application.create()
   App.items = [
     Ember.Object.create({name: 'Dave'}),
@@ -46,7 +45,7 @@ var get = Ember.get, handlebarsGet = Ember.Handlebars.get, fmt = Ember.String.fm
 
   Will result in the HTML structure below
 
-  ``` html
+  ```html
   <div class="ember-view">
     <div class="ember-view">Hi Dave</div>
     <div class="ember-view">Hi Mary</div>
@@ -55,20 +54,19 @@ var get = Ember.get, handlebarsGet = Ember.Handlebars.get, fmt = Ember.String.fm
   ```
 
   ### Blockless Use
-  If you provide an `itemViewClass` option that has its own `template` you can omit
-  the block.
+
+  If you provide an `itemViewClass` option that has its own `template` you can
+  omit the block.
 
   The following template:
 
-  ``` handlebars
-  <script type="text/x-handlebars">
-    {{collection contentBinding="App.items" itemViewClass="App.AnItemView"}}
-  </script>
+  ```handlebars
+  {{collection contentBinding="App.items" itemViewClass="App.AnItemView"}}
   ```
 
   And application code
 
-  ``` javascript
+  ```javascript
   App = Ember.Application.create();
   App.items = [
     Ember.Object.create({name: 'Dave'}),
@@ -83,7 +81,7 @@ var get = Ember.get, handlebarsGet = Ember.Handlebars.get, fmt = Ember.String.fm
 
   Will result in the HTML structure below
 
-  ``` html
+  ```html
   <div class="ember-view">
     <div class="ember-view">Greetings Dave</div>
     <div class="ember-view">Greetings Mary</div>
@@ -93,38 +91,34 @@ var get = Ember.get, handlebarsGet = Ember.Handlebars.get, fmt = Ember.String.fm
 
   ### Specifying a CollectionView subclass
 
-  By default the `{{collection}}` helper will create an instance of `Ember.CollectionView`.
-  You can supply a `Ember.CollectionView` subclass to the helper by passing it
-  as the first argument:
+  By default the `{{collection}}` helper will create an instance of
+  `Ember.CollectionView`. You can supply a `Ember.CollectionView` subclass to
+  the helper by passing it as the first argument:
 
-  ``` handlebars
-  <script type="text/x-handlebars">
-    {{#collection App.MyCustomCollectionClass contentBinding="App.items"}}
-      Hi {{view.content.name}}
-    {{/collection}}
-  </script>
+  ```handlebars
+  {{#collection App.MyCustomCollectionClass contentBinding="App.items"}}
+    Hi {{view.content.name}}
+  {{/collection}}
   ```
-
 
   ### Forwarded `item.*`-named Options
 
-  As with the `{{view}}`, helper options passed to the `{{collection}}` will be set on
-  the resulting `Ember.CollectionView` as properties. Additionally, options prefixed with
-  `item` will be applied to the views rendered for each item (note the camelcasing):
+  As with the `{{view}}`, helper options passed to the `{{collection}}` will be
+  set on the resulting `Ember.CollectionView` as properties. Additionally,
+  options prefixed with `item` will be applied to the views rendered for each
+  item (note the camelcasing):
 
-  ``` handlebars
-  <script type="text/x-handlebars">
-    {{#collection contentBinding="App.items"
-                  itemTagName="p"
-                  itemClassNames="greeting"}}
-      Howdy {{view.content.name}}
-    {{/collection}}
-  </script>
+  ```handlebars
+  {{#collection contentBinding="App.items"
+                itemTagName="p"
+                itemClassNames="greeting"}}
+    Howdy {{view.content.name}}
+  {{/collection}}
   ```
 
   Will result in the following HTML structure:
 
-  ``` html
+  ```html
   <div class="ember-view">
     <p class="ember-view greeting">Howdy Dave</p>
     <p class="ember-view greeting">Howdy Mary</p>
@@ -154,6 +148,7 @@ Ember.Handlebars.registerHelper('collection', function(path, options) {
   var fn = options.fn;
   var data = options.data;
   var inverse = options.inverse;
+  var view = options.data.view;
 
   // If passed a path string, convert that into an object.
   // Otherwise, just default to the standard class.
@@ -176,7 +171,7 @@ Ember.Handlebars.registerHelper('collection', function(path, options) {
     if (hash.hasOwnProperty(prop)) {
       match = prop.match(/^item(.)(.*)$/);
 
-      if(match) {
+      if(match && prop !== 'itemController') {
         // Convert itemShouldFoo -> shouldFoo
         itemHash[match[1].toLowerCase() + match[2]] = hash[prop];
         // Delete from hash as this will end up getting passed to the
@@ -203,14 +198,13 @@ Ember.Handlebars.registerHelper('collection', function(path, options) {
   } else if (hash.emptyViewClass) {
     emptyViewClass = handlebarsGet(this, hash.emptyViewClass, options);
   }
-  hash.emptyView = emptyViewClass;
+  if (emptyViewClass) { hash.emptyView = emptyViewClass; }
 
-  if (hash.eachHelper === 'each') {
-    itemHash._context = Ember.computed(function() {
-      return get(this, 'content');
-    }).property('content');
-    delete hash.eachHelper;
+  if(!hash.keyword){
+    itemHash._context = Ember.computed.alias('content');
   }
+
+  var viewString = view.toString();
 
   var viewOptions = Ember.Handlebars.ViewHelper.propertiesFromHTMLOptions({ data: data, hash: itemHash }, this);
   hash.itemViewClass = itemViewClass.extend(viewOptions);

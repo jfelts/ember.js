@@ -65,7 +65,7 @@ test("should support the tabindex property", function() {
   equal(button.$().prop('tabindex'), '6', 'the initial button tabindex is set in the DOM');
 
   button.set('tabindex', 3);
-  equal(button.$().prop('tabindex'), '3', 'the button tabindex changes when it is changed in the view');  
+  equal(button.$().prop('tabindex'), '3', 'the button tabindex changes when it is changed in the view');
 });
 
 
@@ -204,6 +204,10 @@ test("should trigger an action on a String target when clicked", function() {
   synthesizeEvent('mouseup', button);
 
   ok(wasClicked);
+
+  Ember.run(function() {
+    button.destroy();
+  });
 });
 
 test("should not trigger action if mouse leaves area before mouseup", function() {

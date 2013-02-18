@@ -121,7 +121,8 @@ test("input type is configurable when creating view", function() {
 test("value binding works properly for inputs that haven't been created", function() {
 
   Ember.run(function() {
-    textField = Ember.TextField.create({
+    textField.destroy(); // destroy existing textField
+    textField = Ember.TextField.createWithMixins({
       valueBinding: 'TestObject.value'
     });
   });
@@ -139,6 +140,36 @@ test("value binding works properly for inputs that haven't been created", functi
 
   equal(get(textField, 'value'), 'ohai', "value property remains the same once the view has been appended");
   equal(textField.$().val(), 'ohai', "value is reflected in the input element once it is created");
+});
+
+test("value binding sets value on the element", function() {
+  Ember.run(function() {
+    textField.destroy(); // destroy existing textField
+    textField = Ember.TextField.createWithMixins({
+      valueBinding: 'TestObject.value'
+    });
+    textField.append();
+  });
+
+  // Set the value via the DOM
+  Ember.run(function() {
+    textField.$().val('via dom');
+    // Trigger lets the view know we changed this value (like a real user editing)
+    textField.trigger('input', Ember.Object.create({
+      type: 'input'
+    }));
+  });
+
+  equal(get(textField, 'value'), 'via dom', "value property was properly updated via dom");
+  equal(textField.$().val(), 'via dom', "dom property was properly updated via dom");
+
+  // Now, set it via the binding
+  Ember.run(function() {
+    set(TestObject, 'value', 'via view');
+  });
+
+  equal(get(textField, 'value'), 'via view', "value property was properly updated via view");
+  equal(textField.$().val(), 'via view', "dom property was properly updated via view");
 });
 
 test("should call the insertNewline method when return key is pressed", function() {
@@ -171,6 +202,57 @@ test("should call the cancel method when escape key is pressed", function() {
 
   textField.trigger('keyUp', event);
   ok(wasCalled, "invokes cancel method");
+});
+
+test("should send an action if one is defined when the return key is pressed", function() {
+  expect(3);
+
+  var StubController = Ember.Object.extend({
+    send: function(actionName, value, sender) {
+      equal(actionName, 'didTriggerAction', "text field sent correct action name");
+      equal(value, "textFieldValue", "text field sent its current value as first argument");
+      equal(sender, textField, "text field sent itself as second argument");
+    }
+  });
+
+  textField.set('action', 'didTriggerAction');
+  textField.set('value', "textFieldValue");
+  textField.set('controller', StubController.create());
+
+  Ember.run(function() { textField.append(); });
+
+  var event = {
+    keyCode: 13,
+    stopPropagation: Ember.K
+  };
+
+  textField.trigger('keyUp', event);
+});
+
+test("bubbling of handled actions can be enabled via bubbles property", function() {
+  textField.set('bubbles', true);
+  textField.set('action', 'didTriggerAction');
+
+  textField.set('controller', Ember.Object.create({
+    send: Ember.K
+  }));
+
+  append();
+
+  var stopPropagationCount = 0;
+  var event = {
+    keyCode: 13,
+    stopPropagation: function() {
+      stopPropagationCount++;
+    }
+  };
+
+  textField.trigger('keyUp', event);
+  equal(stopPropagationCount, 0, "propagation was not prevented if bubbles is true");
+
+  textField.set('bubbles', false);
+  textField.trigger('keyUp', event);
+  equal(stopPropagationCount, 1, "propagation was prevented if bubbles is false");
 });
 
 // test("listens for focus and blur events", function() {

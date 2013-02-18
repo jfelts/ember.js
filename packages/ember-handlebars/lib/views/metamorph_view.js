@@ -9,6 +9,7 @@ require("ember-views/views/view");
 */
 
 var set = Ember.set, get = Ember.get;
+var Metamorph = requireModule('metamorph');
 
 // DOMManager should just abstract dom manipulation between jquery and metamorph
 var DOMManager = {
@@ -33,16 +34,21 @@ var DOMManager = {
     var morph = view.morph;
 
     view.transitionTo('preRender');
-    view.clearRenderedChildren();
-    var buffer = view.renderToBuffer();
 
     Ember.run.schedule('render', this, function() {
-      if (get(view, 'isDestroyed')) { return; }
-      view.invalidateRecursively('element');
-      view._notifyWillInsertElement();
+      if (view.isDestroying) { return; }
+
+      view.clearRenderedChildren();
+      var buffer = view.renderToBuffer();
+
+      view.invokeRecursively(function(view) {
+        view.propertyDidChange('element');
+      });
+
+      view.triggerRecursively('willInsertElement');
       morph.replaceWith(buffer.string());
       view.transitionTo('inDOM');
-      view._notifyDidInsertElement();
+      view.triggerRecursively('didInsertElement');
     });
   },
 
@@ -73,9 +79,11 @@ Ember._Metamorph = Ember.Mixin.create({
 
   beforeRender: function(buffer) {
     buffer.push(this.morph.startTag());
+    buffer.pushOpeningTag();
   },
 
   afterRender: function(buffer) {
+    buffer.pushClosingTag();
     buffer.push(this.morph.endTag());
   },
 

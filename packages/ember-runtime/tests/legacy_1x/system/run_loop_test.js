@@ -21,7 +21,7 @@ module("System:run_loop() - chained binding", {
       output: 'MyApp.first'
     }) ;
 
-    MyApp.second = Ember.Object.create(Ember.Observable, {
+    MyApp.second = Ember.Object.createWithMixins(Ember.Observable, {
       input: 'MyApp.second',
       output: 'MyApp.second',
 
@@ -72,7 +72,7 @@ test("Should propagate bindings after the RunLoop completes (using Ember.RunLoop
   equal(MyApp.second.get("output"), "change") ;
 
   Ember.TESTING_DEPRECATION = false;
-  
+
 });
 
 test("Should propagate bindings after the RunLoop completes", function() {

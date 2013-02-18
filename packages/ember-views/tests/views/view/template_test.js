@@ -1,18 +1,25 @@
-var set = Ember.set, get = Ember.get;
+var set = Ember.set, get = Ember.get, container, view;
 
-module("Ember.View - Template Functionality");
+module("Ember.View - Template Functionality", {
+  setup: function() {
+    container = new Ember.Container();
+    container.optionsForType('template', { instantiate: false });
+  },
+  teardown: function() {
+    Ember.run(function() {
+      if (view) { view.destroy(); }
+    });
+  }
+});
 
 test("should call the function of the associated template", function() {
-  var view;
+  container.register('template', 'testTemplate', function() {
+    return "<h1 id='twas-called'>template was called</h1>";
+  });
 
   view = Ember.View.create({
-    templateName: 'test_template',
-
-    templates: Ember.Object.create({
-      test_template: function(dataSource) {
-        return "<h1 id='twas-called'>template was called</h1>";
-      }
-    })
+    container: container,
+    templateName: 'testTemplate'
   });
 
   Ember.run(function(){
@@ -23,18 +30,17 @@ test("should call the function of the associated template", function() {
 });
 
 test("should call the function of the associated template with itself as the context", function() {
-  var view;
+  container.register('template', 'testTemplate', function(dataSource) {
+    return "<h1 id='twas-called'>template was called for " + get(dataSource, 'personName') + "</h1>";
+  });
 
   view = Ember.View.create({
-    templateName: 'test_template',
+    container: container,
+    templateName: 'testTemplate',
 
-    personName: "Tom DAAAALE",
-
-    templates: Ember.Object.create({
-      test_template: function(dataSource) {
-        return "<h1 id='twas-called'>template was called for " + get(dataSource, 'personName') + "</h1>";
-      }
-    })
+    context: {
+      personName: "Tom DAAAALE"
+    }
   });
 
   Ember.run(function(){
@@ -45,14 +51,16 @@ test("should call the function of the associated template with itself as the con
 });
 
 test("should fall back to defaultTemplate if neither template nor templateName are provided", function() {
-  var View, view;
+  var View;
 
   View = Ember.View.extend({
     defaultTemplate: function(dataSource) { return "<h1 id='twas-called'>template was called for " + get(dataSource, 'personName') + "</h1>"; }
   });
 
   view = View.create({
-    personName: "Tom DAAAALE"
+    context: {
+      personName: "Tom DAAAALE"
+    }
   });
 
   Ember.run(function(){
@@ -63,7 +71,7 @@ test("should fall back to defaultTemplate if neither template nor templateName a
 });
 
 test("should not use defaultTemplate if template is provided", function() {
-  var View, view;
+  var View;
 
   View = Ember.View.extend({
     template:  function() { return "foo"; },
@@ -79,13 +87,13 @@ test("should not use defaultTemplate if template is provided", function() {
 });
 
 test("should not use defaultTemplate if template is provided", function() {
-  var View, view;
+  var View;
+
+  container.register('template', 'foobar', function() { return 'foo'; });
 
   View = Ember.View.extend({
+    container: container,
     templateName: 'foobar',
-    templates: Ember.Object.create({
-      foobar: function() { return "foo"; }
-    }),
     defaultTemplate: function(dataSource) { return "<h1 id='twas-called'>template was called for " + get(dataSource, 'personName') + "</h1>"; }
   });
 
@@ -98,8 +106,6 @@ test("should not use defaultTemplate if template is provided", function() {
 });
 
 test("should render an empty element if no template is specified", function() {
-  var view;
-
   view = Ember.View.create();
   Ember.run(function(){
     view.createElement();
@@ -126,7 +132,7 @@ test("should provide a controller to the template if a controller is specified o
       contextForView,
       contextForControllerlessView;
 
-  var view = Ember.View.create({
+  view = Ember.View.create({
     controller: controller1,
 
     template: function(buffer, options) {
@@ -194,4 +200,9 @@ test("should provide a controller to the template if a controller is specified o
   strictEqual(optionsDataKeywordsControllerForChildView, controller1, "passes the controller in the data to child views");
   strictEqual(contextForView, controller2, "passes the controller in as the main context of the parent view");
   strictEqual(contextForControllerlessView, controller1, "passes the controller in as the main context of the child view");
+
+  Ember.run(function() {
+    parentView.destroy();
+    parentViewWithControllerlessChild.destroy();
+  });
 });

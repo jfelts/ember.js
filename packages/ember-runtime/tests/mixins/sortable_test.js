@@ -11,7 +11,7 @@ module("Ember.Sortable with content", {
 
       unsortedArray = Ember.A(Ember.A(array).copy());
 
-      sortedArrayController = Ember.ArrayProxy.create(Ember.SortableMixin, {
+      sortedArrayController = Ember.ArrayProxy.createWithMixins(Ember.SortableMixin, {
         content: unsortedArray
       });
     });
@@ -55,7 +55,7 @@ test("you can change sorted properties", function() {
 
 test("changing sort order triggers observers", function() {
   var observer, changeCount = 0;
-  observer = Ember.Object.create({
+  observer = Ember.Object.createWithMixins({
     array: sortedArrayController,
     arrangedDidChange: Ember.observer(function() {
       changeCount++;
@@ -149,7 +149,7 @@ test("you can unshift objects in sorted order", function() {
 
 test("addObject does not insert duplicates", function() {
   var sortedArrayProxy, obj = {};
-  sortedArrayProxy = Ember.ArrayProxy.create(Ember.SortableMixin, {
+  sortedArrayProxy = Ember.ArrayProxy.createWithMixins(Ember.SortableMixin, {
     content: Ember.A([obj])
   });
 
@@ -193,6 +193,15 @@ test("don't remove and insert if position didn't change", function() {
   Ember.set(sortedArrayController.objectAt(0), 'name', 'Scumbag Brynjolfsson');
 
   ok(!insertItemSortedCalled, "insertItemSorted should not have been called");
+});
+
+test("sortProperties observers removed on content removal", function() {
+  var removedObject = unsortedArray.objectAt(2);
+  equal(Ember.listenersFor(removedObject, 'name:change').length, 1,
+    "Before removal, there should be one listener for sortProperty change.");
+  unsortedArray.replace(2, 1, []);
+  equal(Ember.listenersFor(removedObject, 'name:change').length, 0,
+    "After removal, there should be no listeners for sortProperty change.");
 });
 
 module("Ember.Sortable with sortProperties", {

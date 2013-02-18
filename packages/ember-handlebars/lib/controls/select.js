@@ -10,53 +10,55 @@ var set = Ember.set,
     indexOf = Ember.EnumerableUtils.indexOf,
     indexesOf = Ember.EnumerableUtils.indexesOf,
     replace = Ember.EnumerableUtils.replace,
-    isArray = Ember.isArray;
+    isArray = Ember.isArray,
+    precompileTemplate = Ember.Handlebars.compile;
 
 /**
-  The Ember.Select view class renders a
+  The `Ember.Select` view class renders a
   [select](https://developer.mozilla.org/en/HTML/Element/select) HTML element,
-  allowing the user to choose from a list of options. 
+  allowing the user to choose from a list of options.
 
-  The text and `value` property of each `<option>` element within the `<select>` element
-  are populated from the objects in the Element.Select's `content` property. The
-  underlying data object of the selected `<option>` is stored in the
-  Element.Select's `value` property.
+  The text and `value` property of each `<option>` element within the
+  `<select>` element are populated from the objects in the `Element.Select`'s
+  `content` property. The underlying data object of the selected `<option>` is
+  stored in the `Element.Select`'s `value` property.
 
   ### `content` as an array of Strings
-  The simplest version of an Ember.Select takes an array of strings as its `content` property.
-  The string will be used as both the `value` property and the inner text of each `<option>`
-  element inside the rendered `<select>`.
+
+  The simplest version of an `Ember.Select` takes an array of strings as its
+  `content` property. The string will be used as both the `value` property and
+  the inner text of each `<option>` element inside the rendered `<select>`.
 
   Example:
 
-  ``` javascript
+  ```javascript
   App.names = ["Yehuda", "Tom"];
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select contentBinding="App.names"}}
   ```
 
   Would result in the following HTML:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value="Yehuda">Yehuda</option>
     <option value="Tom">Tom</option>
   </select>
   ```
 
-  You can control which `<option>` is selected through the Ember.Select's
+  You can control which `<option>` is selected through the `Ember.Select`'s
   `value` property directly or as a binding:
 
-  ``` javascript
+  ```javascript
   App.names = Ember.Object.create({
     selected: 'Tom',
     content: ["Yehuda", "Tom"]
   });
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select
          contentBinding="App.names.content"
          valueBinding="App.names.selected"
@@ -65,37 +67,38 @@ var set = Ember.set,
 
   Would result in the following HTML with the `<option>` for 'Tom' selected:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value="Yehuda">Yehuda</option>
     <option value="Tom" selected="selected">Tom</option>
   </select>
   ```
 
-  A user interacting with the rendered `<select>` to choose "Yehuda" would update
-  the value of `App.names.selected` to "Yehuda".
+  A user interacting with the rendered `<select>` to choose "Yehuda" would
+  update the value of `App.names.selected` to "Yehuda".
 
   ### `content` as an Array of Objects
-  An Ember.Select can also take an array of JavaScript or Ember objects
-  as its `content` property.
 
-  When using objects you need to tell the Ember.Select which property should be
-  accessed on each object to supply the `value` attribute of the `<option>`
+  An `Ember.Select` can also take an array of JavaScript or Ember objects as
+  its `content` property.
+
+  When using objects you need to tell the `Ember.Select` which property should
+  be accessed on each object to supply the `value` attribute of the `<option>`
   and which property should be used to supply the element text.
 
   The `optionValuePath` option is used to specify the path on each object to
-  the desired property for the `value` attribute.  The `optionLabelPath` 
-  specifies the path on each object to the desired property for the 
-  element's text. Both paths must reference each object itself as 'content':
+  the desired property for the `value` attribute. The `optionLabelPath`
+  specifies the path on each object to the desired property for the
+  element's text. Both paths must reference each object itself as `content`:
 
-  ``` javascript
+  ```javascript
   App.programmers = [
-      Ember.Object.create({firstName: "Yehuda", id: 1}),
-      Ember.Object.create({firstName: "Tom",    id: 2})
-    ];
+    Ember.Object.create({firstName: "Yehuda", id: 1}),
+    Ember.Object.create({firstName: "Tom",    id: 2})
+  ];
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select
          contentBinding="App.programmers"
          optionValuePath="content.id"
@@ -104,7 +107,7 @@ var set = Ember.set,
 
   Would result in the following HTML:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value>Please Select</option>
     <option value="1">Yehuda</option>
@@ -112,23 +115,22 @@ var set = Ember.set,
   </select>
   ```
 
-
-  The `value` attribute of the selected `<option>` within an Ember.Select
+  The `value` attribute of the selected `<option>` within an `Ember.Select`
   can be bound to a property on another object by providing a
   `valueBinding` option:
 
-  ``` javascript
+  ```javascript
   App.programmers = [
-      Ember.Object.create({firstName: "Yehuda", id: 1}),
-      Ember.Object.create({firstName: "Tom",    id: 2})
-    ];
+    Ember.Object.create({firstName: "Yehuda", id: 1}),
+    Ember.Object.create({firstName: "Tom",    id: 2})
+  ];
 
   App.currentProgrammer = Ember.Object.create({
     id: 2
   });
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select
          contentBinding="App.programmers"
          optionValuePath="content.id"
@@ -138,7 +140,7 @@ var set = Ember.set,
 
   Would result in the following HTML with a selected option:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value>Please Select</option>
     <option value="1">Yehuda</option>
@@ -154,9 +156,9 @@ var set = Ember.set,
   used to render each object providing a `selectionBinding`. When the selected
   `<option>` is changed, the property path provided to `selectionBinding`
   will be updated to match the content object of the rendered `<option>`
-  element: 
+  element:
 
-  ``` javascript
+  ```javascript
   App.controller = Ember.Object.create({
     selectedPerson: null,
     content: [
@@ -166,7 +168,7 @@ var set = Ember.set,
   });
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select
          contentBinding="App.controller.content"
          optionValuePath="content.id"
@@ -176,7 +178,7 @@ var set = Ember.set,
 
   Would result in the following HTML with a selected option:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value>Please Select</option>
     <option value="1">Yehuda</option>
@@ -184,18 +186,17 @@ var set = Ember.set,
   </select>
   ```
 
-
   Interacting with the rendered element by selecting the first option
   ('Yehuda') will update the `selectedPerson` value of `App.controller`
   to match the content object of the newly selected `<option>`. In this
-  case it is the first object in the `App.content.content` 
+  case it is the first object in the `App.content.content`
 
   ### Supplying a Prompt
 
-  A `null` value for the Ember.Select's `value` or `selection` property
+  A `null` value for the `Ember.Select`'s `value` or `selection` property
   results in there being no `<option>` with a `selected` attribute:
 
-  ``` javascript
+  ```javascript
   App.controller = Ember.Object.create({
     selected: null,
     content: [
@@ -214,7 +215,7 @@ var set = Ember.set,
 
   Would result in the following HTML:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option value="Yehuda">Yehuda</option>
     <option value="Tom">Tom</option>
@@ -224,10 +225,10 @@ var set = Ember.set,
   Although `App.controller.selected` is `null` and no `<option>`
   has a `selected` attribute the rendered HTML will display the
   first item as though it were selected. You can supply a string
-  value for the Ember.Select to display when there is no selection
+  value for the `Ember.Select` to display when there is no selection
   with the `prompt` option:
 
-  ``` javascript
+  ```javascript
   App.controller = Ember.Object.create({
     selected: null,
     content: [
@@ -237,7 +238,7 @@ var set = Ember.set,
   });
   ```
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.Select
          contentBinding="App.controller.content"
          valueBinding="App.controller.selected"
@@ -247,7 +248,7 @@ var set = Ember.set,
 
   Would result in the following HTML:
 
-  ``` html
+  ```html
   <select class="ember-select">
     <option>Please select a name</option>
     <option value="Yehuda">Yehuda</option>
@@ -264,7 +265,7 @@ Ember.Select = Ember.View.extend(
 
   tagName: 'select',
   classNames: ['ember-select'],
-  defaultTemplate: Ember.Handlebars.compile('{{#if view.prompt}}<option value>{{view.prompt}}</option>{{/if}}{{#each view.content}}{{view Ember.SelectOption contentBinding="this"}}{{/each}}'),
+  defaultTemplate: precompileTemplate('{{#if view.prompt}}<option value="">{{view.prompt}}</option>{{/if}}{{#each view.content}}{{view Ember.SelectOption contentBinding="this"}}{{/each}}'),
   attributeBindings: ['multiple', 'disabled', 'tabindex'],
 
   /**
@@ -287,12 +288,16 @@ Ember.Select = Ember.View.extend(
 
     Otherwise, this should be a list of objects. For instance:
 
-        content: Ember.A([
-            { id: 1, firstName: 'Yehuda' },
-            { id: 2, firstName: 'Tom' }
-          ]),
-        optionLabelPath: 'content.firstName',
-        optionValuePath: 'content.id'
+    ```javascript
+    Ember.Select.create({
+      content: Ember.A([
+          { id: 1, firstName: 'Yehuda' },
+          { id: 2, firstName: 'Tom' }
+        ]),
+      optionLabelPath: 'content.firstName',
+      optionValuePath: 'content.id'
+    });
+    ```
 
     @property content
     @type Array
@@ -301,10 +306,10 @@ Ember.Select = Ember.View.extend(
   content: null,
 
   /**
-    When `multiple` is false, the element of `content` that is currently
+    When `multiple` is `false`, the element of `content` that is currently
     selected, if any.
 
-    When `multiple` is true, an array of such elements.
+    When `multiple` is `true`, an array of such elements.
 
     @property selection
     @type Object or Array
@@ -313,8 +318,8 @@ Ember.Select = Ember.View.extend(
   selection: null,
 
   /**
-    In single selection mode (when `multiple` is false), value can be used to get
-    the current selection's value or set the selection by it's value.
+    In single selection mode (when `multiple` is `false`), value can be used to
+    get the current selection's value or set the selection by it's value.
 
     It is not currently supported in multiple selection mode.
 
@@ -324,7 +329,6 @@ Ember.Select = Ember.View.extend(
   */
   value: Ember.computed(function(key, value) {
     if (arguments.length === 2) { return value; }
-
     var valuePath = get(this, 'optionValuePath').replace(/^content\.?/, '');
     return valuePath ? get(this, 'selection.' + valuePath) : get(this, 'selection');
   }).property('selection'),
@@ -410,7 +414,7 @@ Ember.Select = Ember.View.extend(
         content = get(this, 'content'),
         prompt = get(this, 'prompt');
 
-    if (!content) { return; }
+    if (!get(content, 'length')) { return; }
     if (prompt && selectedIndex === 0) { set(this, 'selection', null); return; }
 
     if (prompt) { selectedIndex -= 1; }

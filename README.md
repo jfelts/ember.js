@@ -1,14 +1,12 @@
 # Ember.js [![Build Status](https://secure.travis-ci.org/emberjs/ember.js.png?branch=master)](http://travis-ci.org/emberjs/ember.js)
 
-Ember.js (formerly SproutCore 2.0) is a JavaScript framework that does all of the heavy lifting that you'd normally have to do by hand. There are tasks that are common to every web app; Ember.js does those things for you, so you can focus on building killer features and UI.
+Ember.js is a JavaScript framework that does all of the heavy lifting that you'd normally have to do by hand. There are tasks that are common to every web app; Ember.js does those things for you, so you can focus on building killer features and UI.
 
 These are the three features that make Ember.js a joy to use:
 
 1. Bindings
 2. Computed properties
 3. Auto-updating templates
-
-Ember.js has strong roots in SproutCore; you can read more about its evolution in [the Ember.js launch announcement](http://yehudakatz.com/2011/12/08/announcing-amber-js/).
 
 ## Bindings
 
@@ -38,7 +36,7 @@ Bindings allow you to architect your application using the MVC (Model-View-Contr
 Computed properties allow you to treat a function like a property:
 
 ``` javascript
-MyApp.president = Ember.Object.create({
+MyApp.President = Ember.Object.extend({
   firstName: "Barack",
   lastName: "Obama",
 
@@ -49,6 +47,7 @@ MyApp.president = Ember.Object.create({
   }.property()
 });
 
+MyApp.president = MyApp.President.create();
 MyApp.president.get('fullName');
 // "Barack Obama"
 ```
@@ -58,7 +57,7 @@ Treating a function like a property is useful because they can work with binding
 Many computed properties have dependencies on other properties. For example, in the above example, the `fullName` property depends on `firstName` and `lastName` to determine its value. You can tell Ember.js about these dependencies like this:
 
 ``` javascript
-MyApp.president = Ember.Object.create({
+MyApp.President = Ember.Object.extend({
   firstName: "Barack",
   lastName: "Obama",
 
@@ -95,7 +94,8 @@ For new users, we recommend downloading the [Ember.js Starter Kit](https://githu
 
 NOTE: Due to the rename, these instructions may be in flux
 
-1. Run `rake` to build Ember.js. Two builds will be placed in the `dist/` directory.
+1. Run `bundle install` to fetch the necessary ruby gems.
+2. Run `rake dist` to build Ember.js. Two builds will be placed in the `dist/` directory.
   * `ember.js` and `ember.min.js` - unminified and minified
     builds of Ember.js
 
@@ -117,17 +117,17 @@ therubyracer`.
 
 1. To start the development server, run `rackup`.
 
-2. Then visit: `http://localhost:9292/tests/index.html?package=PACKAGE_NAME`.  Replace `PACKAGE_NAME` with the name of the package you want to run.  For example:
+2. Then visit: `http://localhost:9292/?package=PACKAGE_NAME`.  Replace `PACKAGE_NAME` with the name of the package you want to run.  For example:
 
-  * [Ember.js Runtime](http://localhost:9292/tests/index.html?package=ember-runtime)
-  * [Ember.js Views](http://localhost:9292/tests/index.html?package=ember-views)
-  * [Ember.js Handlebars](http://localhost:9292/tests/index.html?package=ember-handlebars)
+  * [Ember.js Runtime](http://localhost:9292/?package=ember-runtime)
+  * [Ember.js Views](http://localhost:9292/?package=ember-views)
+  * [Ember.js Handlebars](http://localhost:9292/?package=ember-handlebars)
 
 To run multiple packages, you can separate them with commas. You can run all the tests using the `all` package:
 
-<http://localhost:9292/tests/index.html?package=all>
+<http://localhost:9292/?package=all>
 
-You can also pass `jquery=VERSION` in the test URL to test different versions of jQuery. Default is 1.7.2.
+You can also pass `jquery=VERSION` in the test URL to test different versions of jQuery. Default is 1.9.0.
 
 ## From the CLI
 

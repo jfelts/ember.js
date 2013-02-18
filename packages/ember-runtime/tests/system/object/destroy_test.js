@@ -3,21 +3,23 @@
 module('ember-runtime/system/object/destroy_test');
 
 test("should schedule objects to be destroyed at the end of the run loop", function() {
-  var obj = Ember.Object.create();
+  var obj = Ember.Object.create(), meta;
 
   Ember.run(function() {
-    var meta;
     obj.destroy();
-    meta = Ember.meta(obj);
-    ok(meta, "object is not destroyed immediately");
+    meta = obj[Ember.META_KEY];
+    ok(meta, "meta is not destroyed immediately");
+    ok(!obj.get('isDestroyed'), "object is not destroyed immediately");
   });
 
+  meta = obj[Ember.META_KEY];
+  ok(!meta, "meta is destroyed after run loop finishes");
   ok(obj.get('isDestroyed'), "object is destroyed after run loop finishes");
 });
 
 test("should raise an exception when modifying watched properties on a destroyed object", function() {
   if (Ember.platform.hasAccessors) {
-    var obj = Ember.Object.create({
+    var obj = Ember.Object.createWithMixins({
       foo: "bar",
       fooDidChange: Ember.observer(function() { }, 'foo')
     });
@@ -36,7 +38,7 @@ test("should raise an exception when modifying watched properties on a destroyed
 
 test("observers should not fire after an object has been destroyed", function() {
   var count = 0;
-  var obj = Ember.Object.create({
+  var obj = Ember.Object.createWithMixins({
     fooDidChange: Ember.observer(function() {
       count++;
     }, 'foo')

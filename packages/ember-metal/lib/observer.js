@@ -1,6 +1,6 @@
 require('ember-metal/core');
 require('ember-metal/platform');
-require('ember-metal/utils');
+require('ember-metal/utils'); // Ember.tryFinally
 require('ember-metal/accessors');
 require('ember-metal/array');
 
@@ -26,14 +26,9 @@ var deferred = 0;
       sender: obj,
       keyName: keyName,
       eventName: eventName,
-      listeners: {
-        [targetGuid]: {        // variable name: `actionSet`
-          [methodGuid]: {      // variable name: `action`
-            target: [Object object],
-            method: [Function function]
-          }
-        }
-      }
+      listeners: [
+        [target, method, onceFlag, suspendedFlag]
+      ]
     },
     ...
   ]
@@ -58,7 +53,7 @@ ObserverSet.prototype.add = function(sender, keyName, eventName) {
       sender: sender,
       keyName: keyName,
       eventName: eventName,
-      listeners: {}
+      listeners: []
     }) - 1;
     keySet[keyName] = index;
   }
@@ -71,7 +66,7 @@ ObserverSet.prototype.flush = function() {
   for (i=0, len=observers.length; i < len; ++i) {
     observer = observers[i];
     sender = observer.sender;
-    if (sender.isDestroyed) { continue; }
+    if (sender.isDestroying || sender.isDestroyed) { continue; }
     Ember.sendEvent(sender, observer.eventName, [sender, observer.keyName], observer.listeners);
   }
 };
@@ -106,10 +101,12 @@ Ember.endPropertyChanges = function() {
   Make a series of property changes together in an
   exception-safe way.
 
-      Ember.changeProperties(function() {
-        obj1.set('foo', mayBlowUpWhenSet);
-        obj2.set('bar', baz);
-      });
+  ```javascript
+  Ember.changeProperties(function() {
+    obj1.set('foo', mayBlowUpWhenSet);
+    obj2.set('bar', baz);
+  });
+  ```
 
   @method changeProperties
   @param {Function} callback
@@ -117,11 +114,7 @@ Ember.endPropertyChanges = function() {
 */
 Ember.changeProperties = function(cb, binding){
   Ember.beginPropertyChanges();
-  try {
-    cb.call(binding);
-  } finally {
-    Ember.endPropertyChanges();
-  }
+  Ember.tryFinally(cb, Ember.endPropertyChanges, binding);
 };
 
 /**

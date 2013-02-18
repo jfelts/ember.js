@@ -23,28 +23,28 @@ var FIRST_KEY = /^([^\.\*]+)/;
 // object.
 
 /**
-  Gets the value of a property on an object.  If the property is computed,
-  the function will be invoked.  If the property is not defined but the
-  object implements the unknownProperty() method then that will be invoked.
+  Gets the value of a property on an object. If the property is computed,
+  the function will be invoked. If the property is not defined but the
+  object implements the `unknownProperty` method then that will be invoked.
 
   If you plan to run on IE8 and older browsers then you should use this
   method anytime you want to retrieve a property on an object that you don't
-  know for sure is private.  (My convention only properties beginning with
-  an underscore '_' are considered private.)
+  know for sure is private. (Properties beginning with an underscore '_' 
+  are considered private.)
 
   On all newer browsers, you only need to use this method to retrieve
   properties if the property might not be defined on the object and you want
-  to respect the unknownProperty() handler.  Otherwise you can ignore this
+  to respect the `unknownProperty` handler. Otherwise you can ignore this
   method.
 
-  Note that if the obj itself is null, this method will simply return
-  undefined.
+  Note that if the object itself is `undefined`, this method will throw
+  an error.
 
   @method get
   @for Ember
   @param {Object} obj The object to retrieve from.
   @param {String} keyName The property key to retrieve
-  @return {Object} the property value or null.
+  @return {Object} the property value or `null`.
 */
 get = function get(obj, keyName) {
   // Helpers that operate with 'this' within an #each
@@ -58,6 +58,7 @@ get = function get(obj, keyName) {
   }
 
   if (!obj || keyName.indexOf('.') !== -1) {
+    Ember.assert("Cannot call get with '"+ keyName +"' on an undefined object.", obj !== undefined);
     return getPath(obj, keyName);
   }
 
@@ -84,18 +85,18 @@ get = function get(obj, keyName) {
 
 /**
   Sets the value of a property on an object, respecting computed properties
-  and notifying observers and other listeners of the change.  If the
-  property is not defined but the object implements the unknownProperty()
+  and notifying observers and other listeners of the change. If the
+  property is not defined but the object implements the `unknownProperty`
   method then that will be invoked as well.
 
   If you plan to run on IE8 and older browsers then you should use this
   method anytime you want to set a property on an object that you don't
-  know for sure is private.  (My convention only properties beginning with
-  an underscore '_' are considered private.)
+  know for sure is private. (Properties beginning with an underscore '_' 
+  are considered private.)
 
   On all newer browsers, you only need to use this method to set
   properties if the property might not be defined on the object and you want
-  to respect the unknownProperty() handler.  Otherwise you can ignore this
+  to respect the `unknownProperty` handler. Otherwise you can ignore this
   method.
 
   @method set
@@ -124,8 +125,7 @@ set = function set(obj, keyName, value, tolerant) {
       isUnknown, currentValue;
   if (desc) {
     desc.set(obj, keyName, value);
-  }
-  else {
+  } else {
     isUnknown = 'object' === typeof obj && !(keyName in obj);
 
     // setUnknownProperty is called if `obj` is an object,
@@ -252,13 +252,13 @@ function setPath(root, path, value, tolerant) {
   @private
 
   Normalizes a target/path pair to reflect that actual target/path that should
-  be observed, etc.  This takes into account passing in global property
+  be observed, etc. This takes into account passing in global property
   paths (i.e. a path beginning with a captial letter not defined on the
   target) and * separators.
 
   @method normalizeTuple
   @for Ember
-  @param {Object} target The current target.  May be null.
+  @param {Object} target The current target. May be `null`.
   @param {String} path A path on the target or a global property path.
   @return {Array} a temporary array with the normalized target/path pair.
 */
@@ -281,8 +281,8 @@ Ember.set = set;
 Ember.setPath = Ember.deprecateFunc('setPath is deprecated since set now supports paths', Ember.set);
 
 /**
-  Error-tolerant form of Ember.set. Will not blow up if any part of the
-  chain is undefined, null, or destroyed.
+  Error-tolerant form of `Ember.set`. Will not blow up if any part of the
+  chain is `undefined`, `null`, or destroyed.
 
   This is primarily used when syncing bindings, which may try to update after
   an object has been destroyed.
@@ -290,7 +290,7 @@ Ember.setPath = Ember.deprecateFunc('setPath is deprecated since set now support
   @method trySet
   @for Ember
   @param {Object} obj The object to modify.
-  @param {String} keyName The property key to set
+  @param {String} path The property path to set
   @param {Object} value The value to set
 */
 Ember.trySet = function(root, path, value) {
@@ -299,8 +299,8 @@ Ember.trySet = function(root, path, value) {
 Ember.trySetPath = Ember.deprecateFunc('trySetPath has been renamed to trySet', Ember.trySet);
 
 /**
-  Returns true if the provided path is global (e.g., "MyApp.fooController.bar")
-  instead of local ("foo.bar.baz").
+  Returns true if the provided path is global (e.g., `MyApp.fooController.bar`)
+  instead of local (`foo.bar.baz`).
 
   @method isGlobalPath
   @for Ember

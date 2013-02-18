@@ -17,25 +17,27 @@ var get = Ember.get, set = Ember.set;
 
   Example:
 
-  ``` handlebars
+  ```handlebars
   {{view Ember.TextField valueBinding="firstName"}}
   ```
 
   ## Layout and LayoutName properties
-  Because HTML `input` elements are self closing `layout` and `layoutName` properties will
-  not be applied. See `Ember.View`'s layout section for more information.
+
+  Because HTML `input` elements are self closing `layout` and `layoutName`
+  properties will not be applied. See `Ember.View`'s layout section for more
+  information.
 
   ## HTML Attributes
 
-  By default `Ember.TextField` provides support for `type`, `value`, `size`, `placeholder`,
-  `disabled`, `maxlength` and `tabindex` attributes on a textarea. If you need to support
-  more attributes have a look at the `attributeBindings` property in `Ember.View`'s
-  HTML Attributes section.
+  By default `Ember.TextField` provides support for `type`, `value`, `size`,
+  `placeholder`, `disabled`, `maxlength` and `tabindex` attributes on a
+  test field. If you need to support more attributes have a look at the
+  `attributeBindings` property in `Ember.View`'s HTML Attributes section.
 
-  To globally add support for additional attributes you can reopen `Ember.TextField` or
-  `Ember.TextSupport`.
+  To globally add support for additional attributes you can reopen
+  `Ember.TextField` or `Ember.TextSupport`.
 
-  ``` javascript
+  ```javascript
   Ember.TextSupport.reopen({
     attributeBindings: ["required"]
   })
@@ -51,10 +53,10 @@ Ember.TextField = Ember.View.extend(Ember.TextSupport,
 
   classNames: ['ember-text-field'],
   tagName: "input",
-  attributeBindings: ['type', 'value', 'size'],
+  attributeBindings: ['type', 'value', 'size', 'pattern'],
 
   /**
-    The value attribute of the input element. As the user inputs text, this
+    The `value` attribute of the input element. As the user inputs text, this
     property is updated live.
 
     @property value
@@ -64,7 +66,7 @@ Ember.TextField = Ember.View.extend(Ember.TextSupport,
   value: "",
 
   /**
-    The type attribute of the input element.
+    The `type` attribute of the input element.
 
     @property type
     @type String
@@ -73,11 +75,63 @@ Ember.TextField = Ember.View.extend(Ember.TextSupport,
   type: "text",
 
   /**
-    The size of the text field in characters.
+    The `size` of the text field in characters.
 
     @property size
     @type String
     @default null
   */
-  size: null
+  size: null,
+
+  /**
+    The `pattern` the pattern attribute of input element.
+
+    @property pattern
+    @type String
+    @default null
+  */
+  pattern: null,
+
+  /**
+    The action to be sent when the user presses the return key.
+
+    This is similar to the `{{action}}` helper, but is fired when
+    the user presses the return key when editing a text field, and sends
+    the value of the field as the context.
+
+   @property action
+   @type String
+   @default null
+  */
+  action: null,
+
+  /**
+    Whether they `keyUp` event that triggers an `action` to be sent continues
+    propagating to other views.
+
+    By default, when the user presses the return key on their keyboard and
+    the text field has an `action` set, the action will be sent to the view's
+    controller and the key event will stop propagating.
+
+    If you would like parent views to receive the `keyUp` event even after an
+    action has been dispatched, set `bubbles` to true.
+
+    @property bubbles
+    @type Boolean
+    @default false
+  */
+  bubbles: false,
+
+  insertNewline: function(event) {
+    var controller = get(this, 'controller'),
+        action = get(this, 'action');
+
+    if (action) {
+      controller.send(action, get(this, 'value'), this);
+
+      if (!get(this, 'bubbles')) {
+        event.stopPropagation();
+      }
+    }
+  }
 });

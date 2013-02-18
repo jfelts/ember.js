@@ -6,24 +6,23 @@
 */
 
 /**
-  All Ember methods and functions are defined inside of this namespace.
-  You generally should not add new properties to this namespace as it may be
+  All Ember methods and functions are defined inside of this namespace. You
+  generally should not add new properties to this namespace as it may be
   overwritten by future versions of Ember.
 
-  You can also use the shorthand "Em" instead of "Ember".
+  You can also use the shorthand `Em` instead of `Ember`.
 
-  Ember-Runtime is a framework that provides core functions for
-  Ember including cross-platform functions, support for property
-  observing and objects. Its focus is on small size and performance. You can
-  use this in place of or along-side other cross-platform libraries such as
-  jQuery.
+  Ember-Runtime is a framework that provides core functions for Ember including
+  cross-platform functions, support for property observing and objects. Its
+  focus is on small size and performance. You can use this in place of or
+  along-side other cross-platform libraries such as jQuery.
 
   The core Runtime framework is based on the jQuery API with a number of
   performance optimizations.
 
   @class Ember
   @static
-  @version 1.0.0-pre.2
+  @version 1.0.0-rc.1
 */
 
 if ('undefined' === typeof Ember) {
@@ -50,13 +49,13 @@ Ember.toString = function() { return "Ember"; };
 /**
   @property VERSION
   @type String
-  @default '1.0.0-pre.2'
+  @default '1.0.0-rc.1'
   @final
 */
-Ember.VERSION = '1.0.0-pre.2';
+Ember.VERSION = '1.0.0-rc.1';
 
 /**
-  Standard environmental variables.  You can define these in a global `ENV`
+  Standard environmental variables. You can define these in a global `ENV`
   variable before loading Ember to control various configuration
   settings.
 
@@ -72,14 +71,14 @@ Ember.config = Ember.config || {};
 //
 
 /**
-  Determines whether Ember should enhances some built-in object
-  prototypes to provide a more friendly API.  If enabled, a few methods
-  will be added to Function, String, and Array.  Object.prototype will not be
-  enhanced, which is the one that causes most trouble for people.
+  Determines whether Ember should enhances some built-in object prototypes to
+  provide a more friendly API. If enabled, a few methods will be added to
+  `Function`, `String`, and `Array`. `Object.prototype` will not be enhanced,
+  which is the one that causes most trouble for people.
 
   In general we recommend leaving this option set to true since it rarely
-  conflicts with other code.  If you need to turn it off however, you can
-  define an ENV.EXTEND_PROTOTYPES config to disable it.
+  conflicts with other code. If you need to turn it off however, you can
+  define an `ENV.EXTEND_PROTOTYPES` config to disable it.
 
   @property EXTEND_PROTOTYPES
   @type Boolean
@@ -110,7 +109,7 @@ Ember.LOG_STACKTRACE_ON_DEPRECATION = (Ember.ENV.LOG_STACKTRACE_ON_DEPRECATION !
 Ember.SHIM_ES5 = (Ember.ENV.SHIM_ES5 === false) ? false : Ember.EXTEND_PROTOTYPES;
 
 /**
-  Empty function.  Useful for some operations.
+  Empty function. Useful for some operations.
 
   @method K
   @private
@@ -123,23 +122,15 @@ Ember.K = function() { return this; };
 
 if ('undefined' === typeof Ember.assert) { Ember.assert = Ember.K; }
 if ('undefined' === typeof Ember.warn) { Ember.warn = Ember.K; }
+if ('undefined' === typeof Ember.debug) { Ember.debug = Ember.K; }
 if ('undefined' === typeof Ember.deprecate) { Ember.deprecate = Ember.K; }
 if ('undefined' === typeof Ember.deprecateFunc) {
   Ember.deprecateFunc = function(_, func) { return func; };
 }
 
-// These are deprecated but still supported
-
-if ('undefined' === typeof ember_assert) { exports.ember_assert = Ember.K; }
-if ('undefined' === typeof ember_warn) { exports.ember_warn = Ember.K; }
-if ('undefined' === typeof ember_deprecate) { exports.ember_deprecate = Ember.K; }
-if ('undefined' === typeof ember_deprecateFunc) {
-  exports.ember_deprecateFunc = function(_, func) { return func; };
-}
-
 /**
-  Previously we used `Ember.$.uuid`, however `$.uuid` has been removed from jQuery master.
-  We'll just bootstrap our own uuid now.
+  Previously we used `Ember.$.uuid`, however `$.uuid` has been removed from
+  jQuery master. We'll just bootstrap our own uuid now.
 
   @property uuid
   @type Number
@@ -151,14 +142,36 @@ Ember.uuid = 0;
 // LOGGER
 //
 
+function consoleMethod(name) {
+  if (imports.console && imports.console[name]) {
+    // Older IE doesn't support apply, but Chrome needs it
+    if (imports.console[name].apply) {
+      return function() {
+        imports.console[name].apply(imports.console, arguments);
+      };
+    } else {
+      return function() {
+        var message = Array.prototype.join.call(arguments, ', ');
+        imports.console[name](message);
+      };
+    }
+  }
+}
+
 /**
-  Inside Ember-Metal, simply uses the imports.console object.
+  Inside Ember-Metal, simply uses the methods from `imports.console`.
   Override this to provide more robust logging functionality.
 
   @class Logger
   @namespace Ember
 */
-Ember.Logger = imports.console || { log: Ember.K, warn: Ember.K, error: Ember.K, info: Ember.K, debug: Ember.K };
+Ember.Logger = {
+  log:   consoleMethod('log')   || Ember.K,
+  warn:  consoleMethod('warn')  || Ember.K,
+  error: consoleMethod('error') || Ember.K,
+  info:  consoleMethod('info')  || Ember.K,
+  debug: consoleMethod('debug') || consoleMethod('info') || Ember.K
+};
 
 
 // ..........................................................
@@ -166,8 +179,9 @@ Ember.Logger = imports.console || { log: Ember.K, warn: Ember.K, error: Ember.K,
 //
 
 /**
-  A function may be assigned to `Ember.onerror` to be called when Ember internals encounter an error.
-  This is useful for specialized error handling and reporting code.
+  A function may be assigned to `Ember.onerror` to be called when Ember
+  internals encounter an error. This is useful for specialized error handling
+  and reporting code.
 
   @event onerror
   @for Ember
@@ -196,5 +210,12 @@ Ember.handleErrors = function(func, context) {
     }
   } else {
     return func.apply(context || this);
+  }
+};
+
+Ember.merge = function(original, updates) {
+  for (var prop in updates) {
+    if (!updates.hasOwnProperty(prop)) { continue; }
+    original[prop] = updates[prop];
   }
 };
