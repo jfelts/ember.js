@@ -1,11 +1,11 @@
-module("Ember.Deferred");
+module("Ember.DeferredMixin");
 
 test("can resolve deferred", function() {
 
   var deferred, count = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -28,7 +28,7 @@ test("can reject deferred", function() {
   var deferred, count = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {}, function() {
@@ -51,7 +51,7 @@ test("can resolve with then", function() {
   var deferred, count1 = 0 ,count2 = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -77,7 +77,7 @@ test("can reject with then", function() {
   var deferred, count1 = 0 ,count2 = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -103,7 +103,7 @@ test("can call resolve multiple times", function() {
   var deferred, count = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -127,7 +127,7 @@ test("resolve prevent reject", function() {
   var deferred, resolved = false, rejected = false, progress = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -155,7 +155,7 @@ test("reject prevent resolve", function() {
   var deferred, resolved = false, rejected = false, progress = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   deferred.then(function() {
@@ -184,7 +184,7 @@ test("will call callbacks if they are added after resolution", function() {
   var deferred, count1 = 0;
 
   Ember.run(function() {
-    deferred = Ember.Object.create(Ember.Deferred);
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
   });
 
   stop();
@@ -210,4 +210,29 @@ test("will call callbacks if they are added after resolution", function() {
     start();
     equal(count1, 2, "callbacks called after resolution");
   }, 20);
+});
+
+test("then is chainable", function() {
+  var deferred, count = 0;
+
+  Ember.run(function() {
+    deferred = Ember.Object.createWithMixins(Ember.DeferredMixin);
+  });
+
+  deferred.then(function() {
+    eval('error'); // Use eval to pass JSHint
+  }).then(null, function() {
+    count++;
+  });
+
+  stop();
+  Ember.run(function() {
+    deferred.resolve();
+  });
+
+  setTimeout(function() {
+    start();
+    equal(count, 1, "chained callback was called");
+  }, 20);
+
 });

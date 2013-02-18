@@ -6,9 +6,10 @@
 var get = Ember.get, set = Ember.set, fmt = Ember.String.fmt;
 
 /**
-  Ember.EventDispatcher handles delegating browser events to their corresponding
-  Ember.Views. For example, when you click on a view, Ember.EventDispatcher ensures
-  that that view's `mouseDown` method gets called.
+  `Ember.EventDispatcher` handles delegating browser events to their
+  corresponding `Ember.Views.` For example, when you click on a view,
+  `Ember.EventDispatcher` ensures that that view's `mouseDown` method gets
+  called.
 
   @class EventDispatcher
   @namespace Ember
@@ -40,7 +41,7 @@ Ember.EventDispatcher = Ember.Object.extend(
 
     Sets up event listeners for standard browser events.
 
-    This will be called after the browser sends a DOMContentReady event. By
+    This will be called after the browser sends a `DOMContentReady` event. By
     default, it will set up all of the listeners on the document body. If you
     would like to register the listeners on a different element, set the event
     dispatcher's `root` property.
@@ -102,17 +103,18 @@ Ember.EventDispatcher = Ember.Object.extend(
     @private
 
     Registers an event listener on the document. If the given event is
-    triggered, the provided event handler will be triggered on the target
-    view.
+    triggered, the provided event handler will be triggered on the target view.
 
     If the target view does not implement the event handler, or if the handler
-    returns false, the parent view will be called. The event will continue to
+    returns `false`, the parent view will be called. The event will continue to
     bubble to each successive parent view until it reaches the top.
 
     For example, to have the `mouseDown` method called on the target view when
     a `mousedown` event is received from the browser, do the following:
 
-        setupHandler('mousedown', 'mouseDown');
+    ```javascript
+    setupHandler('mousedown', 'mouseDown');
+    ```
 
     @method setupHandler
     @param {Element} rootElement
@@ -144,11 +146,13 @@ Ember.EventDispatcher = Ember.Object.extend(
     rootElement.delegate('[data-ember-action]', event + '.ember', function(evt) {
       return Ember.handleErrors(function() {
         var actionId = Ember.$(evt.currentTarget).attr('data-ember-action'),
-            action   = Ember.Handlebars.ActionHelper.registeredActions[actionId],
-            handler  = action.handler;
+            action   = Ember.Handlebars.ActionHelper.registeredActions[actionId];
 
-        if (action.eventName === eventName) {
-          return handler(evt);
+        // We have to check for action here since in some cases, jQuery will trigger
+        // an event on `removeChild` (i.e. focusout) after we've already torn down the
+        // action handlers for the view.
+        if (action && action.eventName === eventName) {
+          return action.handler(evt);
         }
       }, this);
     });

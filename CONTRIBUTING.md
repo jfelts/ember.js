@@ -23,9 +23,19 @@ this bug already.
 
 3. Provide JSFiddle or JSBin demo that specifically shows the problem. This
 demo should be fully operational with the exception of the bug you want to
-demonstrate. The more pared down, the better. Preconfigured starting points: [JSFiddle](http://jsfiddle.net/6p6XJ/) | [JSBin](http://jsbin.com/ijicor/3/edit)
+demonstrate. The more pared down, the better.
+Preconfigured starting points for the latest Ember: [JSFiddle](http://jsfiddle.net/mHYh5/) | [JSBin](http://jsbin.com/igawaq/1/edit) (may not work with older IE versions due to MIME type isses).
+Preconfigured starting points for 1.0.0-rc.1: [JSFiddle](http://jsfiddle.net/3bGN4/) | [JSBin](http://jsbin.com/ixupad/1/edit).
+Issues with fiddles are prioritized.
 
-4. If possible, submit a Pull Request with a failing test. Better yet, take
+4. Your issue will be verified. The provided fiddle will be tested for
+correctness. The Ember team will work with you until your issue can
+be verified.
+
+5. Keep up to date with feedback from the Ember team on your ticket. Your
+ticket may be closed if it becomes stale.
+
+6. If possible, submit a Pull Request with a failing test. Better yet, take
 a stab at fixing the bug yourself if you can!
 
 The more information you provide, the easier it is for us to validate that
@@ -50,6 +60,33 @@ this will also help us to understand it better ourselves.
 always have more work to do than time to do it. If you can write some code
 then that will speed the process along.
 
+# Building Ember.js
+
+The stack needed to build emberjs can be quite complex to setup for new developers. A VagrantFile is here to ease things for newcomers.
+Using Vagrant to buid latest version of Ember.js is quite simple. Just follow nexts 4 steps:
+
+1. Install Virtual Box - [Download](https://www.virtualbox.org/wiki/Downloads)
+
+2. Install Vagrant - [Download](http://downloads.vagrantup.com/)
+
+3. Retrieve chef cookbooks
+~~~
+git submodule init
+git submodule update
+~~~
+4. Lauch your vagrant virtual machine
+~~~
+vagrant up
+vagrant ssh
+~~~
+5. Use it!
+~~~
+cd /vagrant
+bundle install
+rake dist
+rake test
+...
+~~~
 
 # Pull Requests
 
@@ -67,7 +104,10 @@ a test!
 
 4. Make the test pass.
 
-5. Push to your fork and submit a pull request. Please provide us with some
+5. Commit your changes. If your pull request fixes an issue specify it in the commit message.
+Here's an example: `git commit -m "Close #52 - Fix controller and viewbindings"`
+
+6. Push to your fork and submit a pull request. Please provide us with some
 explanation of why you made the changes you made. For new features make sure to
 explain a standard use case to us.
 
@@ -89,6 +129,31 @@ Syntax:
 * No trailing whitespace. Blank lines should not have any space.
 * a = b and not a=b.
 * Follow the conventions you see used in the source already.
+
+Inline Documentation Guidelines:
+
+All inline documentation is written using YUIDoc. Follow these rules when
+updating or writing new documentation:
+
+1. All code blocks must be fenced
+2. All code blocks must have a language declared
+3. All code blocks must be valid code for syntax highlighting
+4. All examples in code blocks must be aligned
+5. Use two spaces between the code and the example: `foo();  // result`
+6. All references to code words must be enclosed in backticks
+7. Prefer a single space between sentences
+8. Reference Ember.js as Ember.
+9. Wrap long markdown blocks > 80 characters
+10. Don't include blank lines after `@param` defintions
+
+Code words are:
+
+* `thisPropertyName`
+* `Global.Class.attribute`
+* `thisFunction()`
+* `Global.CONSTANT_NAME`
+* `true`, `false`, `null`, `undefined` (when refering to programming values)
+* references to other properties/methods
 
 And in case we didn't emphasize it enough: we love tests!
 

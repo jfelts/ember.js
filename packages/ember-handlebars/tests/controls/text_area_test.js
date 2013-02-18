@@ -125,7 +125,8 @@ test("input tabindex is updated when setting tabindex property of view", functio
 test("value binding works properly for inputs that haven't been created", function() {
 
   Ember.run(function() {
-    textArea = Ember.TextArea.create({
+    textArea.destroy(); // destroy existing textarea
+    textArea = Ember.TextArea.createWithMixins({
       valueBinding: 'TestObject.value'
     });
   });
@@ -143,6 +144,22 @@ test("value binding works properly for inputs that haven't been created", functi
 
   equal(get(textArea, 'value'), 'ohai', "value property remains the same once the view has been appended");
   equal(textArea.$().val(), 'ohai', "value is reflected in the input element once it is created");
+});
+
+[ 'cut', 'paste', 'input' ].forEach(function(eventName) {
+  test("should update the value on " + eventName + " events", function() {
+
+    Ember.run(function() {
+      textArea.append();
+    });
+
+    textArea.$().val('new value');
+    textArea.trigger(eventName, Ember.Object.create({
+      type: eventName
+    }));
+
+    equal(textArea.get('value'), 'new value', 'value property updates on ' + eventName + ' events');
+  });
 });
 
 test("should call the insertNewline method when return key is pressed", function() {

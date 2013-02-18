@@ -42,10 +42,10 @@ test("should render attribute bindings", function() {
   });
 
   equal(view.$().attr('type'), 'submit', "updates type attribute");
-  ok(view.$().attr('disabled'), "supports customizing attribute name for Boolean values");
-  ok(!view.$().attr('exploded'), "removes exploded attribute when false");
-  ok(!view.$().attr('destroyed'), "removes destroyed attribute when false");
-  ok(view.$().attr('exists'), "adds exists attribute when true");
+  ok(view.$().prop('disabled'), "supports customizing attribute name for Boolean values");
+  ok(!view.$().prop('exploded'), "removes exploded attribute when false");
+  ok(!view.$().prop('destroyed'), "removes destroyed attribute when false");
+  ok(view.$().prop('exists'), "adds exists attribute when true");
   ok(!view.$().attr('nothing'), "removes nothing attribute when null");
   ok(!view.$().attr('notDefined'), "removes notDefined attribute when undefined");
   ok(!view.$().attr('notNumber'), "removes notNumber attribute when NaN");
@@ -72,13 +72,13 @@ test("should update attribute bindings", function() {
   });
 
   equal(view.$().attr('type'), 'reset', "adds type attribute");
-  ok(view.$().attr('disabled'), "adds disabled attribute when true");
-  ok(view.$().attr('exploded'), "adds exploded attribute when true");
-  ok(view.$().attr('destroyed'), "adds destroyed attribute when true");
-  ok(!view.$().attr('exists'), "does not add exists attribute when false");
-  ok(view.$().attr('nothing'), "adds nothing attribute when true");
-  ok(view.$().attr('notDefined'), "adds notDefined attribute when true");
-  ok(view.$().attr('notNumber'), "adds notNumber attribute when true");
+  ok(view.$().prop('disabled'), "adds disabled attribute when true");
+  ok(view.$().prop('exploded'), "adds exploded attribute when true");
+  ok(view.$().prop('destroyed'), "adds destroyed attribute when true");
+  ok(!view.$().prop('exists'), "does not add exists attribute when false");
+  ok(view.$().prop('nothing'), "adds nothing attribute when true");
+  ok(view.$().prop('notDefined'), "adds notDefined attribute when true");
+  ok(view.$().prop('notNumber'), "adds notNumber attribute when true");
   equal(view.$().attr('explosions'), "15", "adds integer attributes");
 
   Ember.run(function(){
@@ -93,17 +93,17 @@ test("should update attribute bindings", function() {
   });
 
   equal(view.$().attr('type'), 'submit', "updates type attribute");
-  ok(!view.$().attr('disabled'), "removes disabled attribute when false");
-  ok(!view.$().attr('exploded'), "removes exploded attribute when false");
-  ok(!view.$().attr('destroyed'), "removes destroyed attribute when false");
-  ok(view.$().attr('exists'), "adds exists attribute when true");
+  ok(!view.$().prop('disabled'), "removes disabled attribute when false");
+  ok(!view.$().prop('exploded'), "removes exploded attribute when false");
+  ok(!view.$().prop('destroyed'), "removes destroyed attribute when false");
+  ok(view.$().prop('exists'), "adds exists attribute when true");
   ok(!view.$().attr('nothing'), "removes nothing attribute when null");
   ok(!view.$().attr('notDefined'), "removes notDefined attribute when undefined");
   ok(!view.$().attr('notNumber'), "removes notNumber attribute when NaN");
 });
 
-test("should allow attributes to be set in the inBuffer state", function() {
-  var parentView, childViews, Test;
+test("should throw if attributes are changed in the inBuffer state", function() {
+  var parentView, Test;
   Ember.run(function() {
     lookup.Test = Test = Ember.Namespace.create();
     Test.controller = Ember.Object.create({
@@ -112,8 +112,7 @@ test("should allow attributes to be set in the inBuffer state", function() {
 
     parentView = Ember.ContainerView.create();
 
-    childViews = parentView.get('childViews');
-    childViews.pushObject(parentView.createChildView(Ember.View, {
+    parentView.pushObject(parentView.createChildView(Ember.View, {
       template: function() {
         return "foo";
       },
@@ -122,37 +121,31 @@ test("should allow attributes to be set in the inBuffer state", function() {
       attributeBindings: ['foo']
     }));
 
-    childViews.pushObject(parentView.createChildView(Ember.View, {
+    parentView.pushObject(parentView.createChildView(Ember.View, {
       template: function() {
         Test.controller.set('foo', 'baz');
         return "bar";
       }
     }));
 
-    childViews.pushObject(parentView.createChildView(Ember.View, {
+    parentView.pushObject(parentView.createChildView(Ember.View, {
       template: function() {
         return "bat";
       }
     }));
   });
 
-  try {
-    Ember.TESTING_DEPRECATION = true;
-
+  raises(function() {
     Ember.run(function() {
       parentView.append();
     });
-  } finally {
-    Ember.TESTING_DEPRECATION = false;
-  }
-
-  equal(parentView.get('childViews')[0].$().attr('foo'), 'baz');
+  }, /Something you did caused a view to re-render after it rendered but before it was inserted into the DOM./);
 
   Ember.run(function(){
     parentView.destroy();
     Test.destroy();
   });
-  
+
 });
 
 // This comes into play when using the {{#each}} helper. If the
@@ -168,7 +161,7 @@ test("should allow binding to String objects", function() {
   Ember.run(function(){
     view.createElement();
   });
-  
+
 
   equal(view.$().attr('foo'), 'bar', "should convert String object to bare string");
 });
@@ -189,4 +182,27 @@ test("should teardown observers on rerender", function() {
   });
 
   equal(Ember.observersFor(view, 'foo').length, 2);
+});
+
+test("handles attribute bindings for properties", function() {
+  view = Ember.View.create({
+    attributeBindings: ['checked'],
+    checked: null
+  });
+
+  appendView();
+
+  equal(!!view.$().prop('checked'), false, 'precond - is not checked');
+
+  Ember.run(function() {
+    view.set('checked', true);
+  });
+
+  equal(view.$().prop('checked'), true, 'changes to checked');
+
+  Ember.run(function() {
+    view.set('checked', false);
+  });
+
+  equal(view.$().prop('checked'), false, 'changes to unchecked');
 });

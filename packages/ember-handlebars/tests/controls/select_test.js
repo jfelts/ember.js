@@ -1,6 +1,7 @@
-var map = Ember.EnumerableUtils.map;
+var map = Ember.EnumerableUtils.map,
+    trim = Ember.$.trim;
 
-var dispatcher, select;
+var dispatcher, select, view;
 
 module("Ember.Select", {
   setup: function() {
@@ -30,11 +31,7 @@ function append() {
 }
 
 function selectedOptions() {
-  var rv = [];
-  for(var i=0, len = select.get('content.length'); i < len; ++i) {
-    rv.push(select.get('childViews.' + i + '.childViews.0.selected'));
-  }
-  return rv;
+  return select.get('childViews').mapProperty('selected');
 }
 
 test("has 'ember-view' and 'ember-select' CSS classes", function() {
@@ -71,7 +68,8 @@ test("can have options", function() {
   append();
 
   equal(select.$('option').length, 3, "Should have three options");
-  equal(select.$().text(), "123", "Options should have content");
+  // IE 8 adds whitespace
+  equal(select.$().text().replace(/\s+/g,''), "123", "Options should have content");
 });
 
 
@@ -98,7 +96,8 @@ test("can specify the property path for an option's label and value", function()
   append();
 
   equal(select.$('option').length, 2, "Should have two options");
-  equal(select.$().text(), "YehudaTom", "Options should have content");
+  // IE 8 adds whitespace
+  equal(select.$().text().replace(/\s+/g,''), "YehudaTom", "Options should have content");
   deepEqual(map(select.$('option').toArray(), function(el) { return Ember.$(el).attr('value'); }), ["1", "2"], "Options should have values");
 });
 
@@ -125,6 +124,7 @@ test("can retrieve the current selected options when multiple=true", function() 
   select.set('content', Ember.A([yehuda, tom, david, brennain]));
   select.set('multiple', true);
   select.set('optionLabelPath', 'content.firstName');
+  select.set('optionValuePath', 'content.firstName');
 
   append();
 
@@ -214,7 +214,7 @@ test("multiple selections can be set when multiple=true", function() {
   select.set('selection', Ember.A([tom, brennain]));
 
   deepEqual(
-    select.$(':selected').map(function(){ return Ember.$(this).text();}).toArray(),
+    select.$(':selected').map(function(){ return trim(Ember.$(this).text());}).toArray(),
     ['Tom', 'Brennain'],
     "After changing it, selection should be correct");
 });
@@ -238,7 +238,7 @@ test("multiple selections can be set by changing in place the selection array wh
   selection.replace(0, selection.get('length'), Ember.A([david, brennain]));
 
   deepEqual(
-    select.$(':selected').map(function(){ return Ember.$(this).text();}).toArray(),
+    select.$(':selected').map(function(){ return trim(Ember.$(this).text());}).toArray(),
     ['David', 'Brennain'],
     "After updating the selection array in-place, selection should be correct");
 });
@@ -254,6 +254,8 @@ test("multiple selections can be set indirectly via bindings and in-place when m
       cyril = { id: 5, firstName: 'Cyril' };
 
   Ember.run(function() {
+    select.destroy(); // Destroy the existing select
+
     select = Ember.Select.extend({
       indirectContent: indirectContent,
       contentBinding: 'indirectContent.controller.content',
@@ -372,7 +374,7 @@ test("a prompt can be specified", function() {
 
   equal(select.$('option').length, 3, "There should be three options");
   equal(select.$()[0].selectedIndex, 0, "By default, the prompt is selected in the DOM");
-  equal(select.$('option:selected').text(), 'Pick a person', "By default, the prompt is selected in the DOM");
+  equal(trim(select.$('option:selected').text()), 'Pick a person', "By default, the prompt is selected in the DOM");
   equal(select.$().val(), '', "By default, the prompt has no value");
 
   equal(select.get('selection'), null, "When the prompt is selected, the selection should be null");
@@ -467,6 +469,7 @@ module("Ember.Select - usage inside templates", {
   teardown: function() {
     Ember.run(function() {
       dispatcher.destroy();
+      if (view) { view.destroy(); }
     });
   }
 });
@@ -499,15 +502,15 @@ test("works from a template with bindings", function() {
     person: null
   });
 
-  var view = Ember.View.create({
+  view = Ember.View.create({
     app: application,
     template: Ember.Handlebars.compile(
       '{{view Ember.Select viewName="select"' +
-      '                    contentBinding="app.peopleController"' +
+      '                    contentBinding="view.app.peopleController"' +
       '                    optionLabelPath="content.fullName"' +
       '                    optionValuePath="content.id"' +
       '                    prompt="Pick a person:"' +
-      '                    selectionBinding="app.selectedPersonController.person"}}'
+      '                    selectionBinding="view.app.selectedPersonController.person"}}'
     )
   });
 
@@ -520,16 +523,16 @@ test("works from a template with bindings", function() {
   equal(select.$('option').length, 5, "Options were rendered");
   equal(select.$().text(), "Pick a person:Yehuda KatzTom DalePeter WagenetErik Bryn", "Option values were rendered");
   equal(select.get('selection'), null, "Nothing has been selected");
-  
+
   Ember.run(function(){
     application.selectedPersonController.set('person', erik);
   });
-  
+
   equal(select.get('selection'), erik, "Selection was updated through binding");
   Ember.run(function(){
     application.peopleController.pushObject(Person.create({id: 5, firstName: "James", lastName: "Rosen"}));
   });
-  
+
   equal(select.$('option').length, 6, "New option was added");
   equal(select.get('selection'), erik, "Selection was maintained after new option was added");
 });
@@ -538,12 +541,12 @@ test("upon content change, the DOM should reflect the selection (#481)", functio
   var userOne = {name: 'Mike', options: Ember.A(['a', 'b']), selectedOption: 'a'},
       userTwo = {name: 'John', options: Ember.A(['c', 'd']), selectedOption: 'd'};
 
-  var view = Ember.View.create({
+  view = Ember.View.create({
     user: userOne,
     template: Ember.Handlebars.compile(
       '{{view Ember.Select viewName="select"' +
-      '    contentBinding="user.options"' +
-      '    selectionBinding="user.selectedOption"}}'
+      '    contentBinding="view.user.options"' +
+      '    selectionBinding="view.user.selectedOption"}}'
     )
   });
 
@@ -565,17 +568,21 @@ test("upon content change, the DOM should reflect the selection (#481)", functio
   equal(selectEl.selectedIndex, 1, "The DOM reflects the correct selection");
 });
 
-test("select element should initialize with the correct selectedIndex when using valueBinding", function() {
-  var view = Ember.View.create({
-    collection: Ember.A([{name: 'Wes', value: 'w'}, {name: 'Gordon', value: 'g'}]),
-    val: 'g',
+test("upon content change with Array-like content, the DOM should reflect the selection", function() {
+  var tom = {id: 4, name: 'Tom'},
+      sylvain = {id: 5, name: 'Sylvain'};
+
+  var proxy = Ember.ArrayProxy.create({
+    content: Ember.A([]),
+    selectedOption: sylvain
+  });
+
+  view = Ember.View.create({
+    proxy: proxy,
     template: Ember.Handlebars.compile(
       '{{view Ember.Select viewName="select"' +
-      '    contentBinding="collection"' +
-      '    optionLabelPath="content.name"' +
-      '    optionValuePath="content.value"' +
-      '    prompt="Please wait..."' +
-      '    valueBinding="val"}}'
+      '    contentBinding="view.proxy"' +
+      '    selectionBinding="view.proxy.selectedOption"}}'
     )
   });
 
@@ -586,6 +593,46 @@ test("select element should initialize with the correct selectedIndex when using
   var select = view.get('select'),
       selectEl = select.$()[0];
 
+  equal(selectEl.selectedIndex, -1, "Precond: The DOM reflects the lack of selection");
+
+  Ember.run(function() {
+    proxy.set('content', Ember.A([tom, sylvain]));
+  });
+
+  equal(select.get('selection'), sylvain, "Selection was properly set after content change");
+  equal(selectEl.selectedIndex, 1, "The DOM reflects the correct selection");
+});
+
+test("select element should correctly initialize and update selectedIndex and bound properties when using valueBinding", function() {
+  view = Ember.View.create({
+    collection: Ember.A([{name: 'Wes', value: 'w'}, {name: 'Gordon', value: 'g'}]),
+    val: 'g',
+    template: Ember.Handlebars.compile(
+      '{{view Ember.Select viewName="select"' +
+      '    contentBinding="view.collection"' +
+      '    optionLabelPath="content.name"' +
+      '    optionValuePath="content.value"' +
+      '    prompt="Please wait..."' +
+      '    valueBinding="view.val"}}'
+    )
+  });
+
+  Ember.run(function() {
+    view.appendTo('#qunit-fixture');
+  });
+
+  var select = view.get('select'),
+      selectEl = select.$()[0];
+
+  equal(view.get('val'), 'g', "Precond: Initial bound property is correct");
   equal(select.get('value'), 'g', "Precond: Initial selection is correct");
   equal(selectEl.selectedIndex, 2, "Precond: The DOM reflects the correct selection");
+
+  select.$('option:eq(2)').removeAttr('selected');
+  select.$('option:eq(1)').prop('selected', true);
+  select.$().trigger('change');
+
+  equal(view.get('val'), 'w', "Updated bound property is correct");
+  equal(select.get('value'), 'w', "Updated selection is correct");
+  equal(selectEl.selectedIndex, 1, "The DOM is updated to reflect the new selection");
 });

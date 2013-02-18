@@ -1,3 +1,82 @@
+*Ember 1.0.0-rc.1 (February 15, 2013)*
+
+* Upgrade to Handlebars 1.0.0-rc.3
+* Update RSVP.js
+* Update router.js
+* Support 0 values for input tags
+* Support for jQuery 1.9
+* ArrayController now defaults to empty array
+* Added Vagrant support for setting up a development environment
+* Adds {{each itemController="..."}}
+* Fix issues where route transitions would not register properly
+* Initial support for Application#reset
+* Fix handling of keywords in bind helpers
+* Better handling of DOM properties
+* Better handling of complex {{#if}} targets
+* {{linkTo}} shouldn't change view context
+* Router#send accepts multiple params
+* Provide a view's template name for debugging
+* Create activate and deactivate hooks for router
+* {{action}} targets are now looked up lazily
+* The model for Route#render is now bound
+* Improvements to ContainerView
+* Added 'pattern' attribute to text field for iOS.
+* CollectionView context is now its content
+* Various enhancements to bound helpers: adds multiple property support to bound helpers, adds bind-able options hash properties, adds {{unbound}} helper support to render unbound form of helpers.
+* Add App.inject
+* Add Ember.EnumberableUtils.intersection
+* Deprecate Controller#controllerFor in favour of Controller#needs
+* Adds `bubbles` property to Ember.TextField
+* Allow overriding of Ember.Router#handleURL
+* Allow libraries loaded before Ember to tie into Ember load hooks
+* Fixed behavior with Route#render and named outlets
+* Fix bug where history location does not account for root URL
+* Allow redirecting from mid-route
+* Support string literals as param for {{linkTo}} and {{action}}
+* Empty object proxies are no longer truthy in {{#if}}
+
+*Ember 1.0.0-pre.4 (January 17, 2013)*
+
+* Add {{partial}}
+* Fix regressions in router.js
+* Support jQuery 1.9.0
+* Use the controller with the same name as the template passed to render, if it exists
+
+*Ember 1.0.0-pre.3 (January 17, 2013)*
+
+* BREAKING CHANGE: New Router API
+* BREAKING CHANGE: `Ember.Object.create` behaves like `setProperties`. Use `createWithMixins` for the old behavior.
+* BREAKING CHANGE: No longer default a view's context to itself
+* BREAKING CHANGE: Remove the nearest view computed properties
+* Significant performance improvements
+* Bound handlebars helpers with `registerBoundHelper`
+* Ember.String improvements
+* TextSupport handles input, cut, and paste events
+* Add `action` support to Ember.TextField
+* Warn about using production builds in localhost
+* Update Metamorph
+* Deprecate Ember.alias in favour of Ember.aliasMethod
+* Add Ember.computed.alias
+* Allow chaining on DeferredMixin#then
+* ArrayController learned itemControllerClass.
+* Added VagrantFile and chef cookbooks to ease ember build for developers.
+* Provide an Ember.Handlebars precompilation package
+* Removed Tab controls
+* Fix Chrome (pre v25) MutationObserver Memory Leak
+* Update to Promises/A+ compatible RSVP
+* Improved instrumentation
+* Rename empty to isEmpty and none to isNone
+* Added support for toStringExtension to augment toString
+* Implement a default computed property setter.
+* Add support for unhandledEvent to StateManager.
+* Load external dependencies via an AMD shim
+* Pass in the old value into the CP as a third argument
+* Deep copy support for NativeArray
+* Added an afterRender queue for scheduling code to run after the render queue has been drained
+* Implement _super() for computed properties
+* Miscellaneous bug fixes
+* General cleanup
+
 *Ember 1.0.0-pre.2 (October 25, 2012)*
 
 * Ember.SortableMixin: don't remove and reinsert items when their sort order doesn't change.  Fixes #1486.

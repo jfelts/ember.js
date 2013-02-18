@@ -1,4 +1,7 @@
 /*globals Handlebars */
+/*jshint newcap:false*/
+
+require("metamorph");
 
 /**
 @module ember
@@ -6,16 +9,41 @@
 */
 
 var get = Ember.get, set = Ember.set, handlebarsGet = Ember.Handlebars.get;
+var Metamorph = requireModule('metamorph');
 
 require('ember-views/views/view');
 require('ember-handlebars/views/metamorph_view');
 
-Ember._SimpleHandlebarsView = Ember._SimpleMetamorphView.extend({
-  instrumentName: 'render.simpleHandlebars',
+function SimpleHandlebarsView(path, pathRoot, isEscaped, templateData) {
+  this.path = path;
+  this.pathRoot = pathRoot;
+  this.isEscaped = isEscaped;
+  this.templateData = templateData;
 
-  normalizedValue: Ember.computed(function() {
-    var path = get(this, 'path'),
-        pathRoot  = get(this, 'pathRoot'),
+  this.morph = Metamorph();
+  this.state = 'preRender';
+  this.updateId = null;
+}
+
+Ember._SimpleHandlebarsView = SimpleHandlebarsView;
+
+SimpleHandlebarsView.prototype = {
+  isVirtual: true,
+  isView: true,
+
+  destroy: function () {
+    if (this.updateId) {
+      Ember.run.cancel(this.updateId);
+      this.updateId = null;
+    }
+    this.morph = null;
+  },
+
+  propertyDidChange: Ember.K,
+
+  normalizedValue: function() {
+    var path = this.path,
+        pathRoot = this.pathRoot,
         result, templateData;
 
     // Use the pathRoot as the result if no path is provided. This
@@ -25,18 +53,28 @@ Ember._SimpleHandlebarsView = Ember._SimpleMetamorphView.extend({
     if (path === '') {
       result = pathRoot;
     } else {
-      templateData = get(this, 'templateData');
+      templateData = this.templateData;
       result = handlebarsGet(pathRoot, path, { data: templateData });
     }
 
     return result;
-  }).property('path', 'pathRoot').volatile(),
+  },
 
-  render: function(buffer) {
+  renderToBuffer: function(buffer) {
+    var string = '';
+
+    string += this.morph.startTag();
+    string += this.render();
+    string += this.morph.endTag();
+
+    buffer.push(string);
+  },
+
+  render: function() {
     // If not invoked via a triple-mustache ({{{foo}}}), escape
     // the content of the template.
-    var escape = get(this, 'isEscaped');
-    var result = get(this, 'normalizedValue');
+    var escape = this.isEscaped;
+    var result = this.normalizedValue();
 
     if (result === null || result === undefined) {
       result = "";
@@ -45,8 +83,7 @@ Ember._SimpleHandlebarsView = Ember._SimpleMetamorphView.extend({
     }
 
     if (escape) { result = Handlebars.Utils.escapeExpression(result); }
-    buffer.push(result);
-    return;
+    return result;
   },
 
   rerender: function() {
@@ -55,29 +92,48 @@ Ember._SimpleHandlebarsView = Ember._SimpleMetamorphView.extend({
       case 'destroyed':
         break;
       case 'inBuffer':
-        throw new Error("Something you did tried to replace an {{expression}} before it was inserted into the DOM.");
+        throw new Ember.Error("Something you did tried to replace an {{expression}} before it was inserted into the DOM.");
       case 'hasElement':
       case 'inDOM':
-        this.domManager.replace(this);
+        this.updateId = Ember.run.scheduleOnce('render', this, 'update');
         break;
     }
 
     return this;
   },
 
+  update: function () {
+    this.updateId = null;
+    this.morph.html(this.render());
+  },
+
   transitionTo: function(state) {
     this.state = state;
+  }
+};
+
+var states = Ember.View.cloneStates(Ember.View.states), merge = Ember.merge;
+
+merge(states._default, {
+  rerenderIfNeeded: Ember.K
+});
+
+merge(states.inDOM, {
+  rerenderIfNeeded: function(view) {
+    if (get(view, 'normalizedValue') !== view._lastNormalizedValue) {
+      view.rerender();
+    }
   }
 });
 
 /**
-  Ember._HandlebarsBoundView is a private view created by the Handlebars `{{bind}}`
-  helpers that is used to keep track of bound properties.
+  `Ember._HandlebarsBoundView` is a private view created by the Handlebars
+  `{{bind}}` helpers that is used to keep track of bound properties.
 
   Every time a property is bound using a `{{mustache}}`, an anonymous subclass
-  of Ember._HandlebarsBoundView is created with the appropriate sub-template and
-  context set up. When the associated property changes, just the template for
-  this view will re-render.
+  of `Ember._HandlebarsBoundView` is created with the appropriate sub-template
+  and context set up. When the associated property changes, just the template
+  for this view will re-render.
 
   @class _HandlebarsBoundView
   @namespace Ember
@@ -86,6 +142,7 @@ Ember._SimpleHandlebarsView = Ember._SimpleMetamorphView.extend({
 */
 Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
   instrumentName: 'render.boundHandlebars',
+  states: states,
 
   /**
     The function used to determine if the `displayTemplate` or
@@ -105,7 +162,7 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
 
     For example, this is true when using the `{{#if}}` helper, because the
     template inside the helper should look up properties relative to the same
-    object as outside the block. This would be false when used with `{{#with
+    object as outside the block. This would be `false` when used with `{{#with
     foo}}` because the template should receive the object found by evaluating
     `foo`.
 
@@ -125,7 +182,7 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
   previousContext: null,
 
   /**
-    The template to render when `shouldDisplayFunc` evaluates to true.
+    The template to render when `shouldDisplayFunc` evaluates to `true`.
 
     @property displayTemplate
     @type Function
@@ -134,7 +191,7 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
   displayTemplate: null,
 
   /**
-    The template to render when `shouldDisplayFunc` evaluates to false.
+    The template to render when `shouldDisplayFunc` evaluates to `false`.
 
     @property inverseTemplate
     @type Function
@@ -147,7 +204,7 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
     The path to look up on `pathRoot` that is passed to
     `shouldDisplayFunc` to determine which template to render.
 
-    In addition, if `preserveContext` is false, the object at this path will
+    In addition, if `preserveContext` is `false,` the object at this path will
     be passed to the template when rendering.
 
     @property path
@@ -158,9 +215,9 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
 
   /**
     The object from which the `path` will be looked up. Sometimes this is the
-    same as the `previousContext`, but in cases where this view has been generated
-    for paths that start with a keyword such as `view` or `controller`, the
-    path root will be that resolved object.
+    same as the `previousContext`, but in cases where this view has been
+    generated for paths that start with a keyword such as `view` or
+    `controller`, the path root will be that resolved object.
 
     @property pathRoot
     @type Object
@@ -188,22 +245,20 @@ Ember._HandlebarsBoundView = Ember._MetamorphView.extend({
   }).property('path', 'pathRoot', 'valueNormalizerFunc').volatile(),
 
   rerenderIfNeeded: function() {
-    if (!get(this, 'isDestroyed') && get(this, 'normalizedValue') !== this._lastNormalizedValue) {
-      this.rerender();
-    }
+    this.currentState.rerenderIfNeeded(this);
   },
 
   /**
     Determines which template to invoke, sets up the correct state based on
-    that logic, then invokes the default Ember.View `render` implementation.
+    that logic, then invokes the default `Ember.View` `render` implementation.
 
     This method will first look up the `path` key on `pathRoot`,
     then pass that value to the `shouldDisplayFunc` function. If that returns
-    true, the `displayTemplate` function will be rendered to DOM. Otherwise,
+    `true,` the `displayTemplate` function will be rendered to DOM. Otherwise,
     `inverseTemplate`, if specified, will be rendered.
 
-    For example, if this Ember._HandlebarsBoundView represented the `{{#with foo}}`
-    helper, it would look up the `foo` property of its context, and
+    For example, if this `Ember._HandlebarsBoundView` represented the `{{#with
+    foo}}` helper, it would look up the `foo` property of its context, and
     `shouldDisplayFunc` would always return true. The object found by looking
     up `foo` would be passed to `displayTemplate`.
 

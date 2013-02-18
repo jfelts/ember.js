@@ -1,6 +1,13 @@
-var set = Ember.set, get = Ember.get;
+var set = Ember.set, get = Ember.get, parentView, view;
 
-module("Ember.View#nearestOfType");
+module("Ember.View#nearest*", {
+  teardown: function() {
+    Ember.run(function() {
+      if (parentView) { parentView.destroy(); }
+      if (view) { view.destroy(); }
+    });
+  }
+});
 
 (function() {
   var Mixin = Ember.Mixin.create({}),
@@ -11,27 +18,47 @@ module("Ember.View#nearestOfType");
       });
 
   test("nearestOfType should find the closest view by view class", function() {
-    var parent, child;
+    var child;
 
     Ember.run(function() {
-      parent = Parent.create();
-      parent.appendTo('#qunit-fixture');
+      parentView = Parent.create();
+      parentView.appendTo('#qunit-fixture');
     });
 
-    child = parent.get('childViews')[0];
-    equal(child.nearestOfType(Parent), parent, "finds closest view in the hierarchy by class");
+    child = parentView.get('childViews')[0];
+    equal(child.nearestOfType(Parent), parentView, "finds closest view in the hierarchy by class");
   });
 
   test("nearestOfType should find the closest view by mixin", function() {
-    var parent, child;
+    var child;
 
     Ember.run(function() {
-      parent = Parent.create();
-      parent.appendTo('#qunit-fixture');
+      parentView = Parent.create();
+      parentView.appendTo('#qunit-fixture');
     });
 
-    child = parent.get('childViews')[0];
-    equal(child.nearestOfType(Mixin), parent, "finds closest view in the hierarchy by class");
+    child = parentView.get('childViews')[0];
+    equal(child.nearestOfType(Mixin), parentView, "finds closest view in the hierarchy by class");
   });
+
+test("nearestWithProperty should search immediate parent", function(){
+  var childView;
+
+  view = Ember.View.create({
+    myProp: true,
+
+    render: function(buffer) {
+      this.appendChild(Ember.View.create());
+    }
+  });
+
+  Ember.run(function() {
+    view.appendTo('#qunit-fixture');
+  });
+
+  childView = view.get('childViews')[0];
+  equal(childView.nearestWithProperty('myProp'), view);
+
+});
 
 }());

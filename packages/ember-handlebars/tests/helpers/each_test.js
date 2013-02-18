@@ -1,3 +1,4 @@
+var get = Ember.get, set = Ember.set;
 var people, view;
 var template, templateMyView;
 var templateFor = function(template) {
@@ -10,12 +11,12 @@ module("the #each helper", {
   setup: function() {
     Ember.lookup = lookup = { Ember: Ember };
 
-    template = templateFor("{{#each people}}{{name}}{{/each}}");
+    template = templateFor("{{#each view.people}}{{name}}{{/each}}");
     people = Ember.A([{ name: "Steve Holt" }, { name: "Annabelle" }]);
 
     view = Ember.View.create({
       template: template,
-      people: people 
+      people: people
     });
 
 
@@ -69,8 +70,9 @@ test("it updates the view if an item is added", function() {
 });
 
 test("it allows you to access the current context using {{this}}", function() {
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
-    template: templateFor("{{#each people}}{{this}}{{/each}}"),
+    template: templateFor("{{#each view.people}}{{this}}{{/each}}"),
     people: Ember.A(['Black Francis', 'Joey Santiago', 'Kim Deal', 'David Lovering'])
   });
 
@@ -144,7 +146,7 @@ test("can add and replace complicatedly harder", function() {
 
 test("it works inside a ul element", function() {
   var ulView = Ember.View.create({
-    template: templateFor('<ul>{{#each people}}<li>{{name}}</li>{{/each}}</ul>'),
+    template: templateFor('<ul>{{#each view.people}}<li>{{name}}</li>{{/each}}</ul>'),
     people: people
   });
 
@@ -157,11 +159,15 @@ test("it works inside a ul element", function() {
   });
 
   equal(ulView.$('li').length, 3, "renders an additional <li> element when an object is added");
+
+  Ember.run(function() {
+    ulView.destroy();
+  });
 });
 
 test("it works inside a table element", function() {
   var tableView = Ember.View.create({
-    template: templateFor('<table><tbody>{{#each people}}<tr><td>{{name}}</td></tr>{{/each}}</tbody></table>'),
+    template: templateFor('<table><tbody>{{#each view.people}}<tr><td>{{name}}</td></tr>{{/each}}</tbody></table>'),
     people: people
   });
 
@@ -180,11 +186,96 @@ test("it works inside a table element", function() {
   });
 
   equal(tableView.$('td').length, 4, "renders an additional <td> when an object is inserted at the beginning of the array");
+
+  Ember.run(function() {
+    tableView.destroy();
+  });
+});
+
+test("it supports itemController", function() {
+  var Controller = Ember.Controller.extend({
+    controllerName: Ember.computed(function() {
+      return "controller:"+this.get('content.name');
+    })
+  });
+
+  var container = new Ember.Container();
+
+  Ember.run(function() { view.destroy(); }); // destroy existing view
+
+  var parentController = {
+    container: container
+  };
+
+  view = Ember.View.create({
+    template: templateFor('{{#each view.people itemController="person"}}{{controllerName}}{{/each}}'),
+    people: people,
+    controller: parentController
+  });
+
+  container.register('controller', 'person', Controller);
+
+  append(view);
+
+  equal(view.$().text(), "controller:Steve Holtcontroller:Annabelle");
+
+  Ember.run(function() {
+    view.rerender();
+  });
+
+  assertText(view, "controller:Steve Holtcontroller:Annabelle");
+
+  Ember.run(function() {
+    people.pushObject({ name: "Yehuda Katz" });
+  });
+
+  assertText(view, "controller:Steve Holtcontroller:Annabellecontroller:Yehuda Katz");
+
+  Ember.run(function() {
+    set(view, 'people', Ember.A([{ name: "Trek Glowacki" }, { name: "Geoffrey Grosenbach" }]));
+  });
+
+  assertText(view, "controller:Trek Glowackicontroller:Geoffrey Grosenbach");
+
+  var controller = view.get('_childViews')[0].get('controller');
+  strictEqual(view.get('_childViews')[0].get('_arrayController.target'), parentController, "the target property of the child controllers are set correctly");
+});
+
+test("it supports itemController when using a custom keyword", function() {
+  var Controller = Ember.Controller.extend({
+    controllerName: Ember.computed(function() {
+      return "controller:"+this.get('content.name');
+    })
+  });
+
+  var container = new Ember.Container();
+
+  Ember.run(function() { view.destroy(); }); // destroy existing view
+  view = Ember.View.create({
+    template: templateFor('{{#each person in view.people itemController="person"}}{{person.controllerName}}{{/each}}'),
+    people: people,
+    controller: {
+      container: container
+    }
+  });
+
+  container.register('controller', 'person', Controller);
+
+  append(view);
+
+  equal(view.$().text(), "controller:Steve Holtcontroller:Annabelle");
+
+  Ember.run(function() {
+    view.rerender();
+  });
+
+  equal(view.$().text(), "controller:Steve Holtcontroller:Annabelle");
 });
 
 test("it supports {{itemViewClass=}}", function() {
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
-    template: templateFor('{{each people itemViewClass="MyView"}}'),
+    template: templateFor('{{each view.people itemViewClass="MyView"}}'),
     people: people
   });
 
@@ -195,9 +286,9 @@ test("it supports {{itemViewClass=}}", function() {
 });
 
 test("it supports {{itemViewClass=}} with tagName", function() {
-
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
-      template: templateFor('{{each people itemViewClass="MyView" tagName="ul"}}'),
+      template: templateFor('{{each view.people itemViewClass="MyView" tagName="ul"}}'),
       people: people
   });
 
@@ -210,7 +301,8 @@ test("it supports {{itemViewClass=}} with tagName", function() {
   html = html.replace(/<div[^>]*><\/div>/ig, '').replace(/[\r\n]/g, '');
   html = html.replace(/<li[^>]*/ig, '<li');
 
-  equal(html, "<ul><li>Steve Holt</li><li>Annabelle</li></ul>");
+  // Use lowercase since IE 8 make tagnames uppercase
+  equal(html.toLowerCase(), "<ul><li>steve holt</li><li>annabelle</li></ul>");
 
 });
 
@@ -220,8 +312,9 @@ test("it supports {{itemViewClass=}} with in format", function() {
       template: templateFor("{{person.name}}")
   });
 
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
-    template: templateFor('{{each person in people itemViewClass="MyView"}}'),
+    template: templateFor('{{each person in view.people itemViewClass="MyView"}}'),
     people: people
   });
 
@@ -232,8 +325,9 @@ test("it supports {{itemViewClass=}} with in format", function() {
 });
 
 test("it supports {{else}}", function() {
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
-    template: templateFor("{{#each items}}{{this}}{{else}}Nothing{{/each}}"),
+    template: templateFor("{{#each view.items}}{{this}}{{else}}Nothing{{/each}}"),
     items: Ember.A(['one', 'two'])
   });
 
@@ -260,6 +354,7 @@ test("it works with the controller keyword", function() {
     content: Ember.A(["foo", "bar", "baz"])
   });
 
+  Ember.run(function() { view.destroy(); }); // destroy existing view
   view = Ember.View.create({
     controller: controller,
     template: templateFor("{{#view}}{{#each controller}}{{this}}{{/each}}{{/view}}")
@@ -270,11 +365,17 @@ test("it works with the controller keyword", function() {
   equal(view.$().text(), "foobarbaz");
 });
 
-module("{{#each foo in bar}}");
+module("{{#each foo in bar}}", {
+  teardown: function() {
+    Ember.run(function() {
+      view.destroy();
+    });
+  }
+});
 
-test("#each accepts a name binding and does not change the context", function() {
+test("#each accepts a name binding", function() {
   view = Ember.View.create({
-    template: templateFor("{{#each item in items}}{{title}} {{item}}{{/each}}"),
+    template: templateFor("{{#each item in view.items}}{{view.title}} {{item}}{{/each}}"),
     title: "My Cool Each Test",
     items: Ember.A([1, 2])
   });
@@ -284,9 +385,30 @@ test("#each accepts a name binding and does not change the context", function() 
   equal(view.$().text(), "My Cool Each Test 1My Cool Each Test 2");
 });
 
+test("#each accepts a name binding and does not change the context", function() {
+  var controller = Ember.Controller.create({
+    name: 'bob the controller'
+  }),
+  obj = Ember.Object.create({
+    name: 'henry the item'
+  });
+
+  view = Ember.View.create({
+    template: templateFor("{{#each item in view.items}}{{name}}{{/each}}"),
+    title: "My Cool Each Test",
+    items: Ember.A([obj]),
+    controller: controller
+  });
+
+  append(view);
+
+  equal(view.$().text(), "bob the controller");
+});
+
+
 test("#each accepts a name binding and can display child properties", function() {
   view = Ember.View.create({
-    template: templateFor("{{#each item in items}}{{title}} {{item.name}}{{/each}}"),
+    template: templateFor("{{#each item in view.items}}{{view.title}} {{item.name}}{{/each}}"),
     title: "My Cool Each Test",
     items: Ember.A([{ name: 1 }, { name: 2 }])
   });
@@ -296,6 +418,17 @@ test("#each accepts a name binding and can display child properties", function()
   equal(view.$().text(), "My Cool Each Test 1My Cool Each Test 2");
 });
 
+test("#each accepts 'this' as the right hand side", function() {
+  view = Ember.View.create({
+    template: templateFor("{{#each item in this}}{{view.title}} {{item.name}}{{/each}}"),
+    title: "My Cool Each Test",
+    controller: Ember.A([{ name: 1 }, { name: 2 }])
+  });
+
+  append(view);
+
+  equal(view.$().text(), "My Cool Each Test 1My Cool Each Test 2");
+});
 test("#each accepts 'this' as the right hand side", function() {
   view = Ember.View.create({
     template: templateFor("{{#each item in this}}{{view.title}} {{item.name}}{{/each}}"),

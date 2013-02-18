@@ -5,18 +5,18 @@ require('ember-views/views/states/default');
 @submodule ember-views
 */
 
-Ember.View.states.preRender = {
-  parentState: Ember.View.states._default,
+var preRender = Ember.View.states.preRender = Ember.create(Ember.View.states._default);
 
+Ember.merge(preRender, {
   // a view leaves the preRender state once its element has been
   // created (createElement).
   insertElement: function(view, fn) {
     view.createElement();
-    view._notifyWillInsertElement();
+    view.triggerRecursively('willInsertElement');
     // after createElement, the view will be in the hasElement state.
     fn.call(view);
     view.transitionTo('inDOM');
-    view._notifyDidInsertElement();
+    view.triggerRecursively('didInsertElement');
   },
 
   renderToBufferIfNeeded: function(view) {
@@ -31,4 +31,4 @@ Ember.View.states.preRender = {
     }
     return value;
   }
-};
+});

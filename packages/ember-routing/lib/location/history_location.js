@@ -29,7 +29,7 @@ Ember.HistoryLocation = Ember.Object.extend({
     @method initState
   */
   initState: function() {
-    this.replaceState(get(this, 'location').pathname);
+    this.replaceState(this.formatURL(this.getURL()));
     set(this, 'history', window.history);
   },
 
@@ -44,12 +44,18 @@ Ember.HistoryLocation = Ember.Object.extend({
   /**
     @private
 
-    Returns the current `location.pathname`.
+    Returns the current `location.pathname` without rootURL
 
     @method getURL
   */
   getURL: function() {
-    return get(this, 'location').pathname;
+    var rootURL = get(this, 'rootURL'),
+        url = get(this, 'location').pathname;
+
+    rootURL = rootURL.replace(/\/$/, '');
+    url = url.replace(rootURL, '');
+
+    return url;
   },
 
   /**
@@ -63,9 +69,27 @@ Ember.HistoryLocation = Ember.Object.extend({
   setURL: function(path) {
     path = this.formatURL(path);
 
-    if (this.getState().path !== path) {
+    if (this.getState() && this.getState().path !== path) {
       popstateReady = true;
       this.pushState(path);
+    }
+  },
+
+  /**
+    @private
+
+    Uses `history.replaceState` to update the url without a page reload
+    or history modification.
+
+    @method replaceURL
+    @param path {String}
+  */
+  replaceURL: function(path) {
+    path = this.formatURL(path);
+
+    if (this.getState() && this.getState().path !== path) {
+      popstateReady = true;
+      this.replaceState(path);
     }
   },
 
@@ -114,13 +138,14 @@ Ember.HistoryLocation = Ember.Object.extend({
     @param callback {Function}
   */
   onUpdateURL: function(callback) {
-    var guid = Ember.guidFor(this);
+    var guid = Ember.guidFor(this),
+        self = this;
 
     Ember.$(window).bind('popstate.ember-location-'+guid, function(e) {
       if(!popstateReady) {
         return;
       }
-      callback(location.pathname);
+      callback(self.getURL());
     });
   },
 

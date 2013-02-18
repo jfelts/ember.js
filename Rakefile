@@ -1,134 +1,5 @@
-abort "Please use Ruby 1.9 to build Ember.js!" if RUBY_VERSION !~ /^1\.9/
-
 require "bundler/setup"
-
-def pipeline
-  require 'rake-pipeline'
-  Rake::Pipeline::Project.new("Assetfile")
-end
-
-def setup_uploader(root=Dir.pwd)
-  require 'github_downloads'
-  uploader = nil
-  Dir.chdir(root) do
-    uploader = GithubDownloads::Uploader.new
-    uploader.authorize
-  end
-  uploader
-end
-
-def upload_file(uploader, filename, description, file)
-  print "Uploading #{filename}..."
-  if uploader.upload_file(filename, description, file)
-    puts "Success"
-  else
-    puts "Failure"
-  end
-end
-
-
-desc "Strip trailing whitespace for JavaScript files in packages"
-task :strip_whitespace do
-  Dir["packages/**/*.js"].each do |name|
-    body = File.read(name)
-    File.open(name, "w") do |file|
-      file.write body.gsub(/ +\n/, "\n")
-    end
-  end
-end
-
-desc "Build ember.js"
-task :dist do
-  puts "Building Ember..."
-  pipeline.invoke
-  puts "Done"
-end
-
-desc "Clean build artifacts from previous builds"
-task :clean do
-  puts "Cleaning build..."
-  rm_rf "dist" # Make sure even things RakeP doesn't know about are cleaned
-  rm_f "tests/ember-tests.js"
-  rm_rf "tmp"
-  puts "Done"
-end
-
-desc "Upload latest Ember.js build to GitHub repository"
-task :upload_latest => [:clean, :dist] do
-  uploader = setup_uploader
-
-  # Upload minified first, so non-minified shows up on top
-  upload_file(uploader, 'ember-latest.min.js', "Ember.js Master (minified)", "dist/ember.min.js")
-  upload_file(uploader, 'ember-latest.js', "Ember.js Master", "dist/ember.js")
-end
-
-desc "Run tests with phantomjs"
-task :test, [:suite] => :dist do |t, args|
-  require "colored"
-
-  unless system("which phantomjs > /dev/null 2>&1")
-    abort "PhantomJS is not installed. Download from http://phantomjs.org"
-  end
-
-  packages = Dir['packages/*/tests'].sort.map { |p| p.split('/')[1] }
-
-  suites = {
-    :default => packages.map{|p| "package=#{p}" },
-    :runtime => [ "package=ember-metal,ember-runtime" ],
-    :all => packages.map{|p| "package=#{p}" } +
-            ["package=all&jquery=1.7.2&nojshint=true",
-              "package=all&jquery=git&nojshint=true",
-              "package=all&extendprototypes=true&nojshint=true",
-              "package=all&extendprototypes=true&jquery=git&nojshint=true",
-              "package=all&dist=build&nojshint=true"]
-  }
-
-  packages.each do |package|
-    suites[package.to_sym] = ["package=#{package}"]
-  end
-
-  if ENV['TEST']
-    opts = [ENV['TEST']]
-  else
-    suite = args[:suite] || :default
-    opts = suites[suite.to_sym]
-  end
-
-  unless opts
-    abort "No suite named: #{suite}"
-  end
-
-  success = true
-  opts.each do |opt|
-    puts "\n"
-
-    cmd = "phantomjs tests/qunit/run-qunit.js \"file://localhost#{File.dirname(__FILE__)}/tests/index.html?#{opt}\""
-    system(cmd)
-
-    # A bit of a hack until we can figure this out on Travis
-    tries = 0
-    while tries < 3 && $?.exitstatus === 124
-      tries += 1
-      puts "\nTimed Out. Trying again...\n"
-      system(cmd)
-    end
-
-    success &&= $?.success?
-  end
-
-  if success
-    puts "\nTests Passed".green
-  else
-    puts "\nTests Failed".red
-    exit(1)
-  end
-end
-
-desc "Automatically run tests (Mac OS X only)"
-task :autotest do
-  system("kicker -e 'rake test' packages")
-end
-
+require "ember-dev/tasks"
 
 ### RELEASE TASKS ###
 
@@ -138,110 +9,6 @@ namespace :release do
 
   def pretend?
     ENV['PRETEND']
-  end
-
-  namespace :framework do
-    desc "Update repo"
-    task :update do
-      puts "Making sure repo is up to date..."
-      system "git pull" unless pretend?
-    end
-
-    desc "Update Changelog"
-    task :changelog do
-      last_tag = `git describe --tags --abbrev=0`.strip
-      puts "Getting Changes since #{last_tag}"
-
-      cmd = "git log #{last_tag}..HEAD --format='* %s'"
-      puts cmd
-
-      changes = `#{cmd}`
-      output = "*Ember #{EMBER_VERSION} (#{Time.now.strftime("%B %d, %Y")})*\n\n#{changes}\n"
-
-      unless pretend?
-        File.open('CHANGELOG', 'r+') do |file|
-          current = file.read
-          file.pos = 0;
-          file.puts output
-          file.puts current
-        end
-      else
-        puts output.split("\n").map!{|s| "    #{s}"}.join("\n")
-      end
-    end
-
-    desc "bump the version to the one specified in the VERSION file"
-    task :bump_version, :version do
-      puts "Bumping to version: #{EMBER_VERSION}"
-
-      unless pretend?
-        # Bump the version of each component package
-        Dir["packages/ember*/package.json", "ember.json"].each do |package|
-          contents = File.read(package)
-          contents.gsub! %r{"version": .*$}, %{"version": "#{EMBER_VERSION}",}
-          contents.gsub! %r{"(ember[\w-]*)": [^,\n]+(,)?$} do
-            %{"#{$1}": "#{EMBER_VERSION}"#{$2}}
-          end
-
-          File.open(package, "w") { |file| file.write contents }
-        end
-
-        # Bump ember-metal/core version
-        contents = File.read("packages/ember-metal/lib/core.js")
-        current_version = contents.match(/@version ([\w\.]+)/) && $1
-        contents.gsub!(current_version, EMBER_VERSION);
-
-        File.open("packages/ember-metal/lib/core.js", "w") do |file|
-          file.write contents
-        end
-      end
-    end
-
-    desc "Commit framework version bump"
-    task :commit do
-      puts "Commiting Version Bump"
-      unless pretend?
-        sh "git reset"
-        sh %{git add VERSION CHANGELOG packages/ember-metal/lib/core.js ember.json packages/**/package.json}
-        sh "git commit -m 'Version bump - #{EMBER_VERSION}'"
-      end
-    end
-
-    desc "Tag new version"
-    task :tag do
-      puts "Tagging v#{EMBER_VERSION}"
-      system "git tag v#{EMBER_VERSION}" unless pretend?
-    end
-
-    desc "Push new commit to git"
-    task :push do
-      puts "Pushing Repo"
-      unless pretend?
-        print "Are you sure you want to push the ember.js repo to github? (y/N) "
-        res = STDIN.gets.chomp
-        if res == 'y'
-          system "git push"
-          system "git push --tags"
-        else
-          puts "Not Pushing"
-        end
-      end
-    end
-
-    desc "Upload release"
-    task :upload do
-      uploader = setup_uploader
-
-      # Upload minified first, so non-minified shows up on top
-      upload_file(uploader, "ember-#{EMBER_VERSION}.min.js", "Ember.js #{EMBER_VERSION} (minified)", "dist/ember.min.js")
-      upload_file(uploader, "ember-#{EMBER_VERSION}.js", "Ember.js #{EMBER_VERSION}", "dist/ember.js")
-    end
-
-    desc "Prepare for a new release"
-    task :prepare => [:update, :changelog, :bump_version]
-
-    desc "Commit the new release"
-    task :deploy => [:commit, :tag, :push, :upload]
   end
 
   namespace :starter_kit do
@@ -406,28 +173,21 @@ namespace :release do
       end
     end
 
-    file "dist/ember.min.js" => :dist
-
-    file "tmp/website/source/about.html.erb" => [:pull, "dist/ember.min.js"] do
+    task :about => [:pull, :dist] do
       require 'zlib'
 
       about = File.read("tmp/website/source/about.html.erb")
       min_gz = Zlib::Deflate.deflate(File.read("dist/ember.min.js")).bytes.count / 1024
 
-      about.gsub! %r{https://github\.com/downloads/emberjs/ember\.js/ember-\d(?:\.(?:(?:\d+)|pre))*?(\.min)?\.js},
-        %{https://github.com/downloads/emberjs/ember.js/ember-#{EMBER_VERSION}\\1.js}
+      about.gsub! %r{https://raw\.github\.com/emberjs/ember\.js/release-builds/ember-\d(?:[\.-](?:(?:\d+)|pre))*?(\.min)?\.js},
+        %{https://raw.github.com/emberjs/ember.js/release-builds/ember-#{EMBER_VERSION}\\1.js}
 
-      about.gsub! %r{https://github\.com/downloads/emberjs/starter-kit/starter-kit\.\d(\.((\d+)|pre))*?*\.zip},
-        %{https://github.com/downloads/emberjs/starter-kit/starter-kit.#{EMBER_VERSION}.zip}
+      about.gsub!(/Ember \d([\.-]((\d+)|pre))*/, "Ember #{EMBER_VERSION}")
 
-      about.gsub! /Ember \d(\.((\d+)|pre))*/, "Ember #{EMBER_VERSION}"
-
-      about.gsub! /\d+k min\+gzip/, "#{min_gz}k min+gzip"
+      about.gsub!(/\d+k min\+gzip/, "#{min_gz}k min+gzip")
 
       File.open("tmp/website/source/about.html.erb", "w") { |f| f.write about }
     end
-
-    task :about => "tmp/website/source/about.html.erb"
 
     desc "Update website repo"
     task :update => :about do
@@ -458,11 +218,13 @@ namespace :release do
   end
 
   desc "Prepare Ember for new release"
-  task :prepare => [:clean, 'framework:prepare', 'starter_kit:prepare', 'examples:prepare', 'website:prepare']
+  task :prepare => ['ember:clean', 'ember:release:prepare', 'website:prepare']
 
   desc "Deploy a new Ember release"
-  task :deploy => ['framework:deploy', 'starter_kit:deploy', 'examples:deploy', 'website:deploy']
-
+  task :deploy => ['ember:release:deploy', 'website:deploy']
 end
 
-task :default => :test
+task :clean => "ember:clean"
+task :dist => "ember:dist"
+task :test, [:suite] => "ember:test"
+task :default => "ember:test"
